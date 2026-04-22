@@ -1,0 +1,42 @@
+meta {
+  name: PATCH+MERGE /service/<id>
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{HREF}}
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/merge-patch+json
+}
+
+body:json {
+  {
+    "feature": [
+      {
+        "id": "Feat1",
+        "isEnabled": true,
+        "name": "ElasticBandwith",
+        "featureCharacteritic": [
+          {
+            "id": "45gh-fg",
+            "name": "isCapped",
+            "value": false,
+            "valueType": "boolean",
+            "@type": "BooleanCharacteristic"
+          }
+        ],
+        "@type": "Feature"
+      }
+    ]
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

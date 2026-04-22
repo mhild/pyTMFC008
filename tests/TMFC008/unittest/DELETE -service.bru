@@ -1,0 +1,16 @@
+meta {
+  name: DELETE /service
+  type: http
+  seq: 9
+}
+
+delete {
+  url: {{tmfc008_base_url}}/service/{{ID}}
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

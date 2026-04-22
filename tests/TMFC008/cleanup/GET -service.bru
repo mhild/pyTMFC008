@@ -1,0 +1,40 @@
+meta {
+  name: GET /service
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?fields=id
+  body: none
+  auth: inherit
+}
+
+params:query {
+  fields: id
+}
+
+script:post-response {
+  const items = typeof res.body === 'string' ? JSON.parse(res.body) : res.body;
+  
+  for (const item of items) {
+    bru.setVar('DELETE_ID', item.id);
+    
+    try {
+      const result = await bru.runRequest('cleanup/servicecall/del_service');
+      // Check result structure
+      const status = result?.status || result?.response?.status || 'unknown';
+      console.log(`Deleted ${item.id}: ${status}`);
+      console.log('Full result:', JSON.stringify(result, null, 2));  // Debug once
+    } catch (error) {
+      console.error(`Failed ${item.id}:`, error?.message || error);
+    }
+  }
+  
+  bru.deleteVar('DELETE_ID')
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

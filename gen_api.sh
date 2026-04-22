@@ -1,0 +1,1 @@
+openapi-generator-cli generate -g python-fastapi -i api_specs/TMF638-Service_Inventory_Management-v5.0.0.oas.yaml -o ./app/openapi_server

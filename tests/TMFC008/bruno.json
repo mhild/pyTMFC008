@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "TMFC008",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

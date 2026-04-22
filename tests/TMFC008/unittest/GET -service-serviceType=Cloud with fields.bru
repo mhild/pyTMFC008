@@ -1,0 +1,21 @@
+meta {
+  name: GET /service?serviceType=Cloud with fields
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Cloud&fields=id,href
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Cloud
+  fields: id,href
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

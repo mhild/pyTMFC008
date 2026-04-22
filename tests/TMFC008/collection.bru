@@ -1,0 +1,23 @@
+script:pre-request {
+  const users = [
+    { id: 101, name: 'Anna Müller', location_id: 501, location_name: 'Hauptstraße 12, Darmstadt' },
+    { id: 102, name: 'Thomas Schmidt', location_id: 502, location_name: 'Rheinstraße 45, Wiesbaden' },
+    { id: 103, name: 'Julia Schneider', location_id: 503, location_name: 'Bahnhofstraße 8, Frankfurt am Main' },
+    { id: 104, name: 'Michael Fischer', location_id: 504, location_name: 'Kaiserstraße 21, Mainz' },
+    { id: 105, name: 'Sabine Weber', location_id: 505, location_name: 'Ludwigsplatz 3, Mannheim' },
+    { id: 106, name: 'Peter Meyer', location_id: 506, location_name: 'Wilhelminenstraße 17, Heidelberg' },
+    { id: 107, name: 'Claudia Wagner', location_id: 507, location_name: 'Goethestraße 29, Offenbach am Main' },
+    { id: 108, name: 'Daniel Becker', location_id: 508, location_name: 'Kaiser-Friedrich-Ring 10, Wiesbaden' },
+    { id: 109, name: 'Laura Hoffmann', location_id: 509, location_name: 'Eschollbrücker Straße 56, Darmstadt' },
+    { id: 110, name: 'Andreas Wolf', location_id: 510, location_name: 'Berliner Allee 14, Gießen' }
+  ];
+  
+  const getRndEntry = () => users[Math.floor(Math.random() * users.length)];
+  let user = getRndEntry();
+  console.log(user); // { id: 103, name: 'Alice Brown' } etc.
+  
+  bru.setVar('user_id', user.id );
+  bru.setVar('user_name', user.name );
+  bru.setVar('location_id', user.location_id );
+  bru.setVar('location_name', user.location_name );
+}

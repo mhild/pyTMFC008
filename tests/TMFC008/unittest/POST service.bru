@@ -1,0 +1,120 @@
+meta {
+  name: POST service
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{tmfc008_base_url}}/service
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "serviceType": "Cloud",
+    "name": "vCPE serial 1355615",
+    "description": "Instantiation of vCPE",
+    "state": "active",
+    "category": "CFS",
+    "serviceSpecification": {
+      "id": "1212",
+      "href": "https://mycsp.com:8080/tmf-api/serviceCatalogManagement/v5/serviceSpecification/1212",
+      "name": "vCPE",
+      "version": "1.0.0",
+      "@type": "ServiceSpecificationRef",
+      "@referredType": "ServiceSpecification"
+    },
+    "feature": [
+      {
+        "id": "Feat1",
+        "isEnabled": true,
+        "name": "ElasticBandwith",
+        "featureCharacteritic": [
+          {
+            "id": "45gh-fg",
+            "name": "isCapped",
+            "value": true,
+            "valueType": "boolean",
+            "@type": "BooleanCharacteristic"
+          }
+        ],
+        "@type": "Feature"
+      }
+    ],
+    "serviceCharacteristic": [
+      {
+        "id": "452-gh6",
+        "name": "vCPE",
+        "valueType": "object",
+        "value": {
+          "@type": "VCPE",
+          "@schemaLocation": "http://host:port/schema/VCPE.schema.json",
+          "vCPE_IP": "193.218.236.21",
+          "MaxTxRate": 300,
+          "TransmitPower": "11 dBm",
+          "maxTream": "OFF"
+        },
+        "@type": "ObjectCharacteristic"
+      }
+    ],
+    "serviceRelationship": [
+      {
+        "relationshipType": "DependentOn",
+        "service": {
+          "href": "https://mycsp.com:8080/tmf-api/serviceInventory/v5/service/5645",
+          "id": "5645",
+          "@type": "ServiceRef",
+          "@referredType": "Service"
+        },
+        "@type": "ServiceRelationship"
+      }
+    ],
+    "relatedParty": [
+      {
+        "role": "user",
+        "partyOrPartyRole": {
+          "href": "https://mycsp.com:8080/tmf-api/partyManagement/v5/individual/{{user_id}}",
+          "id": {{user_id}},
+          "name": "{{user_name}}",
+          "@type": "PartyRef",
+          "@referredType": "Individual"
+        },
+        "@type": "RelatedPartyRefOrPartyRoleRef"
+      }
+    ],
+    "place": [
+      {
+        "role": "InstallationAddress",
+        "place": {
+          "href": "https://mycsp.com:8080/tmf-api/geographicAddressManagement/v5/geographicAddress/{{location_id}}",
+          "id": {{location_id}},
+          "name": "{{location_name}}",
+          "@type": "PlaceRef",
+          "@referredType": "GeographicAddress"
+        },
+        "@type": "RelatedPlaceRefOrValue"
+      }
+    ],
+    "note": [
+      {
+        "id": "77456",
+        "author": "Harvey Poupon",
+        "date": "2018-01-15T12:26:11.748Z",
+        "text": "This service was installed for a rock star.",
+        "@type": "Note"
+      }
+    ],
+    "@type": "Service"
+  }
+}
+
+script:post-response {
+  bru.setEnvVar('ID', res.getBody().id);
+  bru.setEnvVar('HREF', res.getBody().href);
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

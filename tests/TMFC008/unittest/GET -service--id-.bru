@@ -1,0 +1,16 @@
+meta {
+  name: GET /service/<id>
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{HREF}}
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
