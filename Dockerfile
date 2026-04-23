@@ -3,7 +3,7 @@ FROM python:3.14-slim
 
 # Install minimal build deps (for asyncpg / psycopg etc.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+    build-essential  postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
