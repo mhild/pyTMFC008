@@ -175,6 +175,11 @@ def run_bench(base_url: str, db_url: str, runs: int):
     return table.strip(), ("=== " + plans).strip() if plans else ""
 
 
+def duration(seconds: float) -> str:
+    """JUnit XML has millisecond resolution: shorter tests are reported as 0.000 s."""
+    return "< 1 ms" if seconds < 0.001 else f"{seconds * 1000:.0f} ms"
+
+
 def md_escape(text: str) -> str:
     return text.replace("|", "\\|").replace("\n", " ")
 
@@ -257,7 +262,7 @@ def main():
             cells = []
             for results, _ in runs:
                 status, seconds, message = results.get((mod, test_id), ("–", 0.0, ""))
-                cell = STATUS_ICON.get(status, status) + (f" ({seconds * 1000:.0f} ms)" if status != "–" else "")
+                cell = STATUS_ICON.get(status, status) + (f" ({duration(seconds)})" if status != "–" else "")
                 cells.append(cell + (f"<br>{md_escape(message)}" if message else ""))
             out.append(f"| `{md_escape(test_id)}` | {level_of[(mod, test_id)]} | {md_escape(describe(func, funcs))} | " + " | ".join(cells) + " |")
         out.append("")
