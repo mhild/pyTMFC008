@@ -97,7 +97,8 @@ Code: `openapi_server/services/query/` (`parser.py` → AST → `references.py` 
 ## Tests
 
 ```bash
-pip install -r requirements-dev.txt
+python -m venv .venv && . .venv/bin/activate      # recommended outside the devcontainer
+pip install -r requirements-dev.txt                 # app requirements + pytest
 pytest tests/pytest/test_query.py                          # parser/renderer, no database
 TMF_BASE_URL=http://127.0.0.1:8080 pytest tests/pytest     # + integration tests against the running API
 ```
