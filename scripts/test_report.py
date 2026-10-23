@@ -139,6 +139,25 @@ def run_pytest(base_url: str):
     return results, summary
 
 
+def test_levels():
+    """{module: {test function: "API" | "Unit"}}: API if the test (directly or via a fixture) uses the HTTP `client`."""
+    result = {}
+    for name in sorted(os.listdir(TEST_DIR)):
+        if not (name.startswith("test_") and name.endswith(".py")):
+            continue
+        with open(os.path.join(TEST_DIR, name)) as f:
+            funcs = [node for node in ast.parse(f.read()).body if isinstance(node, ast.FunctionDef)]
+        uses = {node.name: {a.arg for a in node.args.args} for node in funcs}
+        api = {"client"}
+        while True:  # fixtures depending on fixtures that use the client
+            more = {fixture for fixture, args in uses.items() if args & api and not fixture.startswith("test_")} - api
+            if not more:
+                break
+            api |= more
+        result[name[:-3]] = {f: "API" if args & api else "Unit" for f, args in uses.items() if f.startswith("test_")}
+    return result
+
+
 def describe(func: str, funcs: dict) -> str:
     """Docstring of the test, else its name as words (test_merge_patch -> "merge patch")."""
     return funcs.get(func) or func.removeprefix("test_").replace("_", " ")
@@ -180,6 +199,7 @@ def main():
         benches.append((label, run_bench(base_url, db_url, args.bench_runs)))
 
     docs = docstrings()
+    levels = test_levels()
     labels = [t[0] for t in targets]
     now = datetime.datetime.now().astimezone()
     out = [
@@ -214,15 +234,24 @@ def main():
     ]
 
     # one table per test module
-    out += ["", "## Test cases", ""]
     keys = list(OrderedDict.fromkeys(k for results, _ in runs for k in results))
+    level_of = {k: levels.get(k[0], {}).get(k[1].split("[", 1)[0], "Unit") for k in keys}
+    counts = {level: sum(1 for v in level_of.values() if v == level) for level in ("API", "Unit")}
+    out += [
+        "", "## Test cases", "",
+        "| Level | Tests | What runs |",
+        "|---|---:|---|",
+        f"| API | {counts['API']} | HTTP request via httpx → FastAPI → SQLAlchemy → database (end-to-end against the running API) |",
+        f"| Unit | {counts['Unit']} | parser and SQL renderers only – no API, no database (run once per backend nevertheless) |",
+        "",
+    ]
     for module in OrderedDict.fromkeys(m for m, _ in keys):
         module_doc, funcs = docs.get(module, ("", {}))
         out += [f"### `{module}.py`", ""]
         if module_doc:
             out += ["```text", module_doc, "```", ""] if "\n" in module_doc else [module_doc, ""]
-        out.append("| Test | Description | " + " | ".join(labels) + " |")
-        out.append("|---|---|" + "---|" * len(labels))
+        out.append("| Test | Level | Description | " + " | ".join(labels) + " |")
+        out.append("|---|---|---|" + "---|" * len(labels))
         for mod, test_id in (k for k in keys if k[0] == module):
             func = test_id.split("[", 1)[0]
             cells = []
@@ -230,7 +259,7 @@ def main():
                 status, seconds, message = results.get((mod, test_id), ("–", 0.0, ""))
                 cell = STATUS_ICON.get(status, status) + (f" ({seconds * 1000:.0f} ms)" if status != "–" else "")
                 cells.append(cell + (f"<br>{md_escape(message)}" if message else ""))
-            out.append(f"| `{md_escape(test_id)}` | {md_escape(describe(func, funcs))} | " + " | ".join(cells) + " |")
+            out.append(f"| `{md_escape(test_id)}` | {level_of[(mod, test_id)]} | {md_escape(describe(func, funcs))} | " + " | ".join(cells) + " |")
         out.append("")
 
     if benches:
