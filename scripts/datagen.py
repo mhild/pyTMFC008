@@ -44,7 +44,7 @@ def make_service(i: int, href_base: str = "http://localhost/service") -> dict:
         {"name": "serialNumber", "valueType": "string", "value": f"SN{i:09d}", "@type": "StringCharacteristic"},
     ]
     rnd.shuffle(characteristics)
-    return {
+    doc = {
         "id": str(sid),
         "href": f"{href_base}/{sid}",
         "@type": "Service",
@@ -68,3 +68,11 @@ def make_service(i: int, href_base: str = "http://localhost/service") -> dict:
              "@type": "RelatedPartyRefOrPartyRoleRef"},
         ],
     }
+    if i % 2:  # every odd service (CFS) depends on the even one before it (RFS)
+        rid = service_id(i - 1)
+        doc["serviceRelationship"] = [{
+            "relationshipType": "DependentOn",
+            "service": {"id": str(rid), "href": f"{href_base}/{rid}", "@type": "ServiceRef", "@referredType": "Service"},
+            "@type": "ServiceRelationship",
+        }]
+    return doc

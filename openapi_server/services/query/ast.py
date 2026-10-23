@@ -8,9 +8,21 @@ relative to the current item (`@`).
 from dataclasses import dataclass
 from typing import Tuple, Union
 
-Scalar = Union[str, int, float, bool, None]
+
+
+@dataclass(frozen=True)
+class Var:
+    """Path variable ($name) bound by the SQL renderer, e.g. the id of a joined document."""
+    name: str
+
+
+Scalar = Union[str, int, float, bool, None, Var]
 
 COMPARISON_OPS = ("==", "!=", "<", "<=", ">", ">=")
+
+
+class FilterError(ValueError):
+    """Invalid filter expression (-> HTTP 400)."""
 
 
 @dataclass(frozen=True)
@@ -49,6 +61,18 @@ class Exists:
 
 
 @dataclass(frozen=True)
+class Ref:
+    """`@.path` is a reference to another service whose document matches `target`.
+
+    `trail` is the absolute key path of the reference (see references.REFERENCES).
+    Resolved by the renderer with a join (or, for an embedded value, in place).
+    """
+    path: Path  # relative to `@`, ends at the reference object
+    target: Path  # rooted at the referenced document
+    trail: Tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class And:
     items: Tuple["Predicate", ...]
 
@@ -63,7 +87,7 @@ class Not:
     item: "Predicate"
 
 
-Predicate = Union[Compare, Exists, And, Or, Not]
+Predicate = Union[Compare, Exists, Ref, And, Or, Not]
 
 
 def root_filter(predicate: Predicate) -> Path:

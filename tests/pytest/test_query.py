@@ -2,6 +2,7 @@
 import pytest
 
 from openapi_server.services.query.parser import FilterError, parse_query_params
+from openapi_server.services.query.references import embedded_variant, join_variant, single_ref
 from openapi_server.services.query.render import oracle_json_path, pg_jsonpath, render_condition
 
 MAC_FILTER = "$.serviceCharacteristic[?(@.name=='mac' && @.value=='00:11:22:33:44:55')]"
@@ -89,3 +90,99 @@ def test_reserved_params_are_not_filters():
 def test_invalid_filters_are_rejected(params):
     with pytest.raises(FilterError):
         parse_query_params(params)
+
+
+# --- attribute filters sharing a prefix are evaluated per element ---------------
+
+@pytest.mark.parametrize(
+    "params, expected",
+    [
+        (
+            [("serviceCharacteristic.name", "mac"), ("serviceCharacteristic.value", "x")],
+            ['$."serviceCharacteristic"[*] ? ((@."name" == "mac") && (@."value" == "x"))'],
+        ),
+        (
+            [("relatedParty.role", "user"), ("relatedParty.partyOrPartyRole.name", "Peter Meyer")],
+            ['$."relatedParty"[*] ? ((@."role" == "user") && (@."partyOrPartyRole"."name" == "Peter Meyer"))'],
+        ),
+        (
+            [("serviceType", "Cloud"), ("state", "active")],
+            ['$ ? (@."serviceType" == "Cloud")', '$ ? (@."state" == "active")'],
+        ),
+        (
+            [("serviceCharacteristic.name", "mac"), ("serviceCharacteristic.name", "vlan")],
+            ['$ ? (@."serviceCharacteristic"."name" == "mac")', '$ ? (@."serviceCharacteristic"."name" == "vlan")'],
+        ),
+    ],
+)
+def test_attribute_filters_grouped_by_prefix(params, expected):
+    assert [pg_jsonpath(p) for p in parse_query_params(params)] == expected
+
+
+# --- filters through service references -----------------------------------------
+
+REL_PARAMS = [
+    ("serviceRelationship.relationshipType", "DependentOn"),
+    ("serviceRelationship.service.serviceCharacteristic.name", "mac"),
+    ("serviceRelationship.service.serviceCharacteristic.value", "x"),
+]
+
+
+def test_reference_is_resolved():
+    (path,) = parse_query_params(REL_PARAMS)
+    ref = single_ref(path)
+    assert ref.trail == ("serviceRelationship", "service")
+    assert pg_jsonpath(ref.target) == '$."serviceCharacteristic"[*] ? ((@."name" == "mac") && (@."value" == "x"))'
+    assert pg_jsonpath(join_variant(path)) == (
+        '$."serviceRelationship"[*] ? ((@."relationshipType" == "DependentOn") && (@."service"."id" == $ref_id))'
+    )
+    assert pg_jsonpath(embedded_variant(path)) == (
+        '$."serviceRelationship"[*] ? ((@."relationshipType" == "DependentOn") && '
+        '(exists(@."service"."serviceCharacteristic"[*] ? ((@."name" == "mac") && (@."value" == "x")))))'
+    )
+
+
+def test_jsonpath_and_attribute_syntax_resolve_alike():
+    (attr,) = parse_query_params(REL_PARAMS[1:])
+    (jp,) = parse_query_params(
+        [("filter", "$.serviceRelationship[?(@.service.serviceCharacteristic[?(@.name=='mac' && @.value=='x')])]")]
+    )
+    assert single_ref(attr).target == single_ref(jp).target
+    assert single_ref(attr).trail == single_ref(jp).trail
+    # different but equivalent paths to the reference id
+    assert pg_jsonpath(join_variant(attr)) == '$."serviceRelationship"."service"[*] ? (@."id" == $ref_id)'
+    assert pg_jsonpath(join_variant(jp)) == '$."serviceRelationship"[*] ? (@."service"."id" == $ref_id)'
+
+
+@pytest.mark.parametrize("dialect", ["postgresql", "oracle"])
+def test_reference_sql_joins_by_id(dialect):
+    (path,) = parse_query_params(REL_PARAMS)
+    sql = str(render_condition(path, dialect, 0))
+    prefix = "service.id = ANY(ARRAY(" if dialect == "postgresql" else "service.id IN ("
+    assert sql.startswith(prefix + "SELECT s1.id FROM service s1 WHERE ")
+    assert " UNION SELECT s2.id FROM service s2 JOIN service t2 ON " in sql
+    assert "'x'" not in sql and '"x"' not in sql  # values are bound
+    if dialect == "postgresql":
+        assert "s2.payload @> jsonb_build_object('serviceRelationship', jsonb_build_array(" in sql
+    else:
+        assert "JSON_VALUE(t2.payload, '$.id') AS \"ref_id\"" in sql
+
+
+@pytest.mark.parametrize(
+    "params, joins",
+    [
+        ([("serviceRelationship.service.id", "1")], False),
+        ([("serviceRelationship.service.href", "h")], False),
+        ([("serviceRelationship.service.name", "B")], True),
+        ([("supportingService.state", "active")], True),
+        ([("serviceRelationship.relationshipType", "DependentOn")], False),
+    ],
+)
+def test_join_only_when_dereferencing(params, joins):
+    (path,) = parse_query_params(params)
+    assert (single_ref(path) is not None) == joins
+
+
+def test_nested_references_are_rejected():
+    with pytest.raises(FilterError):
+        parse_query_params([("serviceRelationship.service.supportingService.name", "x")])

@@ -29,6 +29,12 @@ def queries(n: int):
          {"filter": f"$.serviceCharacteristic[?(@.name=='mac' && @.value=='{mac}')]"}),
         ("mac (attribute filter)", {"serviceCharacteristic.value": mac}),
         ("mac, no match", {"filter": "$.serviceCharacteristic[?(@.name=='mac' && @.value=='ff:ff:ff:ff:ff:ff')]"}),
+        ("A related to B with mac (join)",
+         {"serviceRelationship.service.serviceCharacteristic.name": "mac",
+          "serviceRelationship.service.serviceCharacteristic.value": mac_for(i - i % 2)}),
+        ("related to B with mac, no match (join)",
+         {"serviceRelationship.service.serviceCharacteristic.name": "mac",
+          "serviceRelationship.service.serviceCharacteristic.value": "ff:ff:ff:ff:ff:ff"}),
         ("rare relatedParty name", {"relatedParty.partyOrPartyRole.name": "Customer 00001"}),
         ("serviceType + state (~3%)", {"serviceType": "Cloud", "state": "suspended"}),
         ("range startDate.gte (no index)", {"startDate.gte": "2025-06-01"}),
@@ -66,10 +72,12 @@ async def explain(n: int):
     async with engine.connect() as conn:
         for label, params in queries(n):
             offset = int(params.pop("offset", 0))
-            _, stmt = list_statements(params.items(), dialect.name, offset, 100)
+            _, stmt, joins = list_statements(params.items(), dialect.name, offset, 100)
             compiled = stmt.compile(dialect=dialect, compile_kwargs={"render_postcompile": True})
             print(f"\n=== {label}")
             if dialect.name == "postgresql":
+                parallel = "0" if joins else "DEFAULT"  # as the API does (service.disable_parallel_query)
+                await conn.exec_driver_sql(f"SET max_parallel_workers_per_gather = {parallel}")
                 args = tuple(compiled.params[name] for name in compiled.positiontup)
                 result = await conn.exec_driver_sql("EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF) " + compiled.string, args)
             else:

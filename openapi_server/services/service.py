@@ -3,13 +3,13 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import jsonpatch
 from fastapi import HTTPException
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from openapi_server.database.models import Service
 from openapi_server.services.merge_patch import apply_merge_patch
 from openapi_server.services.query.parser import FilterError, parse_query_params
-from openapi_server.services.query.render import render_conditions
+from openapi_server.services.query.render import needs_join, render_conditions
 
 # Always returned, even when `fields` selects other attributes (TMF630)
 MANDATORY_FIELDS = ("id", "href", "@type")
@@ -58,9 +58,12 @@ async def get_service(service_id: str, session: AsyncSession) -> Dict:
     return (await _load(session, service_id)).payload
 
 
-def list_statements(query_params: Iterable[Tuple[str, str]], dialect: str, offset: int, limit: int) -> Tuple[Select, Select]:
-    """(count statement, page statement) for a filtered list request; raises FilterError."""
-    conditions = render_conditions(parse_query_params(query_params), dialect)
+def list_statements(
+    query_params: Iterable[Tuple[str, str]], dialect: str, offset: int, limit: int
+) -> Tuple[Select, Select, bool]:
+    """(count statement, page statement, joins other services?) for a list request; raises FilterError."""
+    paths = parse_query_params(query_params)
+    conditions = render_conditions(paths, dialect)
     count_stmt = select(func.count()).select_from(Service).where(*conditions)
     # Deferred join: sort and skip only the (indexed) ids, then load the documents
     # of the requested page - instead of sorting whole documents for deep offsets.
@@ -72,7 +75,14 @@ def list_statements(query_params: Iterable[Tuple[str, str]], dialect: str, offse
         # Oracle can't estimate the page size (bind variables) and would full-scan for the join
         .prefix_with("/*+ NO_MERGE(page) LEADING(page) USE_NL(service) INDEX(service) */", dialect="oracle")
     )
-    return count_stmt, page_stmt
+    return count_stmt, page_stmt, needs_join(paths)
+
+
+async def disable_parallel_query(session: AsyncSession) -> None:
+    """PostgreSQL estimates every JSON path condition at 1% of the rows; for reference
+    joins that makes parallel seq scans look cheaper than the (far better) GIN index."""
+    if session.bind.dialect.name == "postgresql":
+        await session.execute(text("SET LOCAL max_parallel_workers_per_gather = 0"))
 
 
 async def list_services(
@@ -83,10 +93,12 @@ async def list_services(
 ) -> Tuple[List[Dict], int]:
     """Filtered page of services and the total number of matches."""
     try:
-        count_stmt, page_stmt = list_statements(query_params, session.bind.dialect.name, offset, limit)
+        count_stmt, page_stmt, joins = list_statements(query_params, session.bind.dialect.name, offset, limit)
     except FilterError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
+    if joins:
+        await disable_parallel_query(session)
     total = (await session.execute(count_stmt)).scalar_one()
     rows = (await session.execute(page_stmt)).scalars().all()
     return list(rows), total

@@ -11,7 +11,9 @@ values are rendered as escaped literals or bind variables by the renderers.
 """
 
 import re
-from typing import Iterable, List, Optional, Tuple
+from collections import Counter
+from dataclasses import dataclass, field
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from .ast import (
     COMPARISON_OPS,
@@ -20,6 +22,7 @@ from .ast import (
     Compare,
     Exists,
     Filter,
+    FilterError,
     Key,
     Not,
     Or,
@@ -28,6 +31,7 @@ from .ast import (
     Scalar,
     root_filter,
 )
+from .references import resolve_references
 
 RESERVED_PARAMS = {"fields", "offset", "limit", "sort", "filter"}
 KEY_RE = re.compile(r"^[A-Za-z_@][A-Za-z0-9_@\-]*$")
@@ -36,10 +40,6 @@ _SUFFIX_OPS = {"eq": "==", "ne": "!=", "gt": ">", "gte": ">=", "lt": "<", "lte":
 # "startDate>=x" arrives as key "startDate>" with value "x"
 _KEY_TAIL_OPS = {">": ">=", "<": "<=", "!": "!="}
 _NUMBER_RE = re.compile(r"^-?\d+(\.\d+)?([eE][+-]?\d+)?$")
-
-
-class FilterError(ValueError):
-    """Invalid filter expression (-> HTTP 400)."""
 
 
 def _key(name: str) -> Key:
@@ -62,25 +62,83 @@ def _value_alternatives(raw: str, op: str) -> List[Scalar]:
     return [raw]
 
 
-def parse_attribute_filter(name: str, raw_value: str) -> Path:
+def _split_attribute(name: str) -> Tuple[str, List[str]]:
+    """'startDate.gte' -> ('>=', ['startDate'])"""
     op = "=="
     if name and name[-1] in _KEY_TAIL_OPS:
         op, name = _KEY_TAIL_OPS[name[-1]], name[:-1]
     parts = name.split(".")
     if len(parts) > 1 and parts[-1] in _SUFFIX_OPS:
         op = _SUFFIX_OPS[parts.pop()]
-    path = Path(tuple(_key(p) for p in parts))
+    for part in parts:
+        _key(part)
+    return op, parts
 
+
+def _leaf(path: Path, op: str, raw_value: str) -> Predicate:
     comparisons: List[Predicate] = []
     for raw in raw_value.split(","):  # comma = OR (TMF630)
         for value in _value_alternatives(raw, op):
             comparisons.append(Compare(path, op, value))
-    if op == "!=":
-        # "not equal to any of the values"
-        predicate: Predicate = comparisons[0] if len(comparisons) == 1 else And(tuple(comparisons))
-    else:
-        predicate = comparisons[0] if len(comparisons) == 1 else Or(tuple(comparisons))
-    return root_filter(predicate)
+    if len(comparisons) == 1:
+        return comparisons[0]
+    # "!=": not equal to any of the values
+    return And(tuple(comparisons)) if op == "!=" else Or(tuple(comparisons))
+
+
+@dataclass
+class _Node:
+    leaves: List[Tuple[str, str]] = field(default_factory=list)  # (op, raw value) on this node
+    children: Dict[str, "_Node"] = field(default_factory=dict)
+
+    def leaf_count(self) -> int:
+        return len(self.leaves) + sum(c.leaf_count() for c in self.children.values())
+
+
+def _node_predicate(keys: Tuple[str, ...], node: _Node) -> Predicate:
+    while not node.leaves and len(node.children) == 1:
+        ((key, node),) = node.children.items()
+        keys += (key,)
+    path = tuple(Key(k) for k in keys)
+    if node.leaf_count() == 1:
+        ((op, raw),) = node.leaves
+        return _leaf(Path(path), op, raw)
+    # several conditions below a common prefix must hold for the same (array) element
+    parts = [_leaf(Path(()), op, raw) for op, raw in node.leaves]
+    parts += [_node_predicate((k,), child) for k, child in node.children.items()]
+    return Exists(Path(path + (Filter(And(tuple(parts))),)))
+
+
+def parse_attribute_filters(params: Iterable[Tuple[str, str]]) -> List[Path]:
+    """Attribute filters; those sharing a path prefix are evaluated per element:
+    serviceCharacteristic.name=mac&serviceCharacteristic.value=x
+      -> $.serviceCharacteristic[*] ? (@.name == "mac" && @.value == "x")
+    A repeated parameter name starts a separate condition (name=a&name=b: both must exist).
+    """
+    trees: List[_Node] = []
+    occurrence: Counter = Counter()
+    for name, raw_value in params:
+        op, parts = _split_attribute(name)
+        k = occurrence[name]
+        occurrence[name] += 1
+        while len(trees) <= k:
+            trees.append(_Node())
+        node = trees[k]
+        for part in parts:
+            node = node.children.setdefault(part, _Node())
+        node.leaves.append((op, raw_value))
+
+    paths: List[Path] = []
+    for tree in trees:
+        for key, child in tree.children.items():
+            pred = _node_predicate((key,), child)
+            paths.append(pred.path if isinstance(pred, Exists) else root_filter(pred))
+    return paths
+
+
+def parse_attribute_filter(name: str, raw_value: str) -> Path:
+    (path,) = parse_attribute_filters([(name, raw_value)])
+    return path
 
 
 # --------------------------------------------------------------------------- #
@@ -233,9 +291,11 @@ def parse_jsonpath_filter(expr: str) -> Path:
 def parse_query_params(params: Iterable[Tuple[str, str]]) -> List[Path]:
     """All filter conditions of a request; the result set must match all of them."""
     conditions: List[Path] = []
+    attributes: List[Tuple[str, str]] = []
     for name, value in params:
         if name == "filter":
             conditions.append(parse_jsonpath_filter(value))
         elif name not in RESERVED_PARAMS:
-            conditions.append(parse_attribute_filter(name, value))
-    return conditions
+            attributes.append((name, value))
+    conditions += parse_attribute_filters(attributes)
+    return [resolve_references(c) for c in conditions]
