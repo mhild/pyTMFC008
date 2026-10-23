@@ -60,7 +60,8 @@ def seed_oracle(url, start, count, truncate):
             )
             conn.commit()
             print(f"  {rng.stop - start:>9} rows", end="\r")
-        cur.execute("BEGIN DBMS_STATS.GATHER_TABLE_STATS(USER, 'SERVICE', cascade => TRUE); END;")
+        # own cursor: the input sizes above are left over if nothing was inserted (--count 0)
+        conn.cursor().execute("BEGIN DBMS_STATS.GATHER_TABLE_STATS(USER, 'SERVICE', cascade => TRUE); END;")
 
 
 def main():
