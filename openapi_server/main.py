@@ -12,7 +12,8 @@
 """  # noqa: E501
 
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 from openapi_server.apis.events_subscription_api import router as EventsSubscriptionApiRouter
 from openapi_server.apis.notification_listener_api import router as NotificationListenerApiRouter
@@ -27,3 +28,18 @@ app = FastAPI(
 app.include_router(EventsSubscriptionApiRouter)
 app.include_router(NotificationListenerApiRouter)
 app.include_router(ServiceApiRouter)
+
+
+@app.exception_handler(HTTPException)
+async def tmf_error_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Errors in the TMF630 Error format."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "@type": "Error",
+            "code": str(exc.status_code),
+            "reason": str(exc.detail),
+            "status": str(exc.status_code),
+        },
+        headers=getattr(exc, "headers", None),
+    )
