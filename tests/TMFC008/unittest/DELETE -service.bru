@@ -1,13 +1,17 @@
 meta {
   name: DELETE /service
   type: http
-  seq: 9
+  seq: 10
 }
 
 delete {
   url: {{tmfc008_base_url}}/service/{{ID}}
   body: none
   auth: inherit
+}
+
+assert {
+  res.status: eq 204
 }
 
 settings {

@@ -1,13 +1,16 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+import os
 from typing import AsyncGenerator
 
-from openapi_server.database.models import Base
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
-DATABASE_URL = "postgresql+asyncpg://app:secret@db:5432/app_db"
-#DATABASE_URL = "postgresql+asyncpg://app:secret@localhost:5432/app_db"
+# e.g. postgresql+asyncpg://app:secret@db:5432/app_db
+#  or  oracle+oracledb_async://app:secret@oracle:1521/?service_name=FREEPDB1
+DATABASE_URL = os.environ["DATABASE_URL"]
+SQL_ECHO = os.environ.get("SQL_ECHO", "false").lower() in ("1", "true", "yes")
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(DATABASE_URL, echo=SQL_ECHO, pool_pre_ping=True)
 async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_maker() as session:

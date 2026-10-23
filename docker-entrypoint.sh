@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-# Default values if not set
-: "${DB_HOST:=db}"
-: "${DB_PORT:=5432}"
-: "${DB_USER:=app}"
-: "${DB_NAME:=app_db}"
+echo "Waiting for database..."
+python scripts/wait_for_db.py
 
 echo "Waiting for PostgreSQL at $DB_HOST:$DB_PORT..."
 
@@ -21,4 +18,3 @@ alembic upgrade head
 
 echo "Starting app..."
 exec "$@"
-

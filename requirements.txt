@@ -6,6 +6,8 @@ asyncpg==0.31.0
 attrs==26.1.0
 certifi==2026.2.25
 click==8.3.2
+# cryptography (dependency of oracledb) 50.x crashed with SIGILL on an arm64 host; 46.x works
+cryptography==46.0.3
 dnspython==2.8.0
 email-validator==2.3.0
 fastapi==0.136.0
@@ -29,6 +31,7 @@ Mako==1.3.11
 markdown-it-py==4.0.0
 MarkupSafe==3.0.3
 mdurl==0.1.2
+oracledb==26.0.1
 pydantic==2.13.3
 pydantic-extra-types==2.11.1
 pydantic-settings==2.14.0
