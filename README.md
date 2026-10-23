@@ -120,6 +120,7 @@ so the database URLs use `localhost`.
 
 ```bash
 export PG=postgresql+asyncpg://app:secret@localhost:5432/app_db
+DATABASE_URL=$PG alembic upgrade head     # creates table and indexes; already done if the app ran against PostgreSQL
 DATABASE_URL=$PG python scripts/seed.py --count 1000000 --truncate
 DATABASE_URL=$PG python scripts/bench.py --base-url http://127.0.0.1:8080 --plans
 ```
@@ -128,10 +129,13 @@ DATABASE_URL=$PG python scripts/bench.py --base-url http://127.0.0.1:8080 --plan
 
 ```bash
 export ORA='oracle+oracledb_async://app:secret@localhost:1521/?service_name=FREEPDB1'
+DATABASE_URL=$ORA alembic upgrade head    # creates table and indexes; already done if the app ran against Oracle
 DATABASE_URL=$ORA python scripts/seed.py --count 1000000 --truncate
 DATABASE_URL=$ORA python scripts/bench.py --base-url http://127.0.0.1:8080 --plans
 ```
 
+* The app container only migrates the database it is started against. Running `alembic upgrade head` again is
+  harmless, so run it whenever in doubt – `seed.py` stops with a hint if the table is missing.
 * `--truncate` deletes all services first; without it, `--start <n>` appends further services.
   1 million services need several GB per database (PostgreSQL including WAL) – check the free disk space first.
 * `bench.py` takes the number of services from the API's `X-Total-Count` and derives the searched MAC addresses

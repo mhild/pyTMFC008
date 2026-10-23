@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from datagen import make_service, service_id  # noqa: E402
 
 BATCH = 5_000
+NO_TABLE = "Table 'service' not found - run the migrations first: DATABASE_URL=... alembic upgrade head"
 
 
 def batches(start: int, count: int):
@@ -33,6 +34,8 @@ async def seed_postgres(url, start, count, truncate):
         user=url.username, password=url.password, host=url.host, port=url.port or 5432, database=url.database
     )
     try:
+        if not await conn.fetchval("SELECT to_regclass('service') IS NOT NULL"):
+            sys.exit(NO_TABLE)
         if truncate:
             await conn.execute("TRUNCATE service")
         for rng in batches(start, count):
@@ -50,6 +53,8 @@ def seed_oracle(url, start, count, truncate):
     dsn = f"{url.host}:{url.port or 1521}/{url.query.get('service_name', url.database)}"
     with oracledb.connect(user=url.username, password=url.password, dsn=dsn) as conn:
         cur = conn.cursor()
+        if not cur.execute("SELECT COUNT(*) FROM user_tables WHERE table_name = 'SERVICE'").fetchone()[0]:
+            sys.exit(NO_TABLE)
         if truncate:
             cur.execute("TRUNCATE TABLE service")
         cur.setinputsizes(None, oracledb.DB_TYPE_JSON)  # bind dicts as native OSON
