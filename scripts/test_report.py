@@ -91,7 +91,7 @@ async def database_version(url: str) -> str:
             else:
                 version = (await conn.execute(text("SELECT version()"))).scalar()
             count = (await conn.execute(text("SELECT COUNT(*) FROM service"))).scalar()
-        return f"{' '.join(version.split())} – {count:,} services in table".replace(f"{count:,}", f"{count:,}".replace(",", "."))
+        return f"{' '.join(version.split())} – {count:,} services in table"
     except Exception as exc:  # noqa: BLE001 - report, don't fail
         return f"not reachable ({type(exc).__name__})"
     finally:
@@ -183,45 +183,45 @@ def main():
     labels = [t[0] for t in targets]
     now = datetime.datetime.now().astimezone()
     out = [
-        "# Testbericht",
+        "# Test report",
         "",
-        f"Erzeugt am {now:%Y-%m-%d %H:%M %Z} mit `scripts/test_report.py`. Neu erzeugen: siehe [Reproduzieren](#reproduzieren).",
+        f"Generated on {now:%Y-%m-%d %H:%M %Z} by `scripts/test_report.py`. To regenerate, see [Reproduce](#reproduce).",
         "",
-        "## Ergebnis",
+        "## Result",
         "",
-        "| Backend | API | Ergebnis |",
+        "| Backend | API | Result |",
         "|---|---|---|",
     ]
     for (label, base_url, _), (_, summary) in zip(targets, runs):
         out.append(f"| {label} | `{base_url}` | {md_escape(summary)} |")
 
-    out += ["", "## Testumgebung", "", "| | |", "|---|---|"]
+    out += ["", "## Test environment", "", "| | |", "|---|---|"]
     out += [
-        f"| Code-Stand | {git_info()} |",
-        f"| Betriebssystem | {md_escape(os_info())} |",
+        f"| Code version | {git_info()} |",
+        f"| Operating system | {md_escape(os_info())} |",
         f"| CPU | {md_escape(cpu_info())} |",
-        f"| Arbeitsspeicher | {memory_info()} |",
+        f"| Memory | {memory_info()} |",
         f"| Python | {platform.python_version()} ({platform.python_implementation()}) |",
     ]
     for label, version in zip(labels, versions):
-        out.append(f"| Datenbank {label} | {md_escape(version)} |")
+        out.append(f"| Database {label} | {md_escape(version)} |")
     for image, status in container_images():
         out.append(f"| Container | `{image}` ({status}) |")
-    out.append("| Pakete | " + ", ".join(f"{p} {metadata.version(p)}" for p in PACKAGES if _installed(p)) + " |")
+    out.append("| Packages | " + ", ".join(f"{p} {metadata.version(p)}" for p in PACKAGES if _installed(p)) + " |")
     out += [
         "",
-        "Die API lief für jeden Testlauf als eigene uvicorn-Instanz (ein Worker) auf demselben Host wie die Datenbanken (Docker).",
+        "For each test run the API ran as a separate uvicorn instance (one worker) on the same host as the databases (Docker).",
     ]
 
     # one table per test module
-    out += ["", "## Testfälle", ""]
+    out += ["", "## Test cases", ""]
     keys = list(OrderedDict.fromkeys(k for results, _ in runs for k in results))
     for module in OrderedDict.fromkeys(m for m, _ in keys):
         module_doc, funcs = docs.get(module, ("", {}))
         out += [f"### `{module}.py`", ""]
         if module_doc:
             out += ["```text", module_doc, "```", ""] if "\n" in module_doc else [module_doc, ""]
-        out.append("| Test | Beschreibung | " + " | ".join(labels) + " |")
+        out.append("| Test | Description | " + " | ".join(labels) + " |")
         out.append("|---|---|" + "---|" * len(labels))
         for mod, test_id in (k for k in keys if k[0] == module):
             func = test_id.split("[", 1)[0]
@@ -237,22 +237,22 @@ def main():
         out += [
             "## Performance",
             "",
-            f"`scripts/bench.py`: {args.bench_runs} Requests je Abfrage über die HTTP-API (nach einem Warm-up), "
-            "Latenz end-to-end inkl. `X-Total-Count`; Daten aus `scripts/seed.py`. "
-            "Die Ausführungspläne zeigen das SQL, das die API für die Abfrage erzeugt.",
+            f"`scripts/bench.py`: {args.bench_runs} requests per query via the HTTP API (after a warm-up), "
+            "end-to-end latency including `X-Total-Count`; data from `scripts/seed.py`. "
+            "The execution plans show the SQL the API generates for each query.",
             "",
         ]
         for label, (table, plans) in benches:
             out += [f"### {label}", "", "```text", table, "```", ""]
             if plans:
-                out += ["<details><summary>Ausführungspläne</summary>", "", "```text", plans, "```", "", "</details>", ""]
+                out += ["<details><summary>Execution plans</summary>", "", "```text", plans, "```", "", "</details>", ""]
 
     out += [
-        "## Nicht enthalten",
+        "## Not included",
         "",
-        "* Die Bruno-Collection (`tests/TMFC008`) ist nicht Teil dieses Berichts (Bruno-CLI im Devcontainer nicht installiert).",
+        "* The Bruno collection (`tests/TMFC008`) is not part of this report (Bruno CLI not installed in the devcontainer).",
         "",
-        "## Reproduzieren",
+        "## Reproduce",
         "",
         "```bash",
         "docker compose up -d db oracle",
@@ -261,7 +261,7 @@ def main():
         "DATABASE_URL=$PG alembic upgrade head && DATABASE_URL=$ORA alembic upgrade head",
         "DATABASE_URL=$PG  uvicorn openapi_server.main:app --port 8001 &",
         "DATABASE_URL=$ORA uvicorn openapi_server.main:app --port 8002 &",
-        "DATABASE_URL=${PG/+asyncpg/} python scripts/seed.py --count 50000 --truncate   # Daten für die Performance-Messung",
+        "DATABASE_URL=${PG/+asyncpg/} python scripts/seed.py --count 50000 --truncate   # data for the performance measurement",
         "DATABASE_URL=${ORA/_async/} python scripts/seed.py --count 50000 --truncate",
         'python scripts/test_report.py --target "PostgreSQL|http://127.0.0.1:8001|$PG" --target "Oracle|http://127.0.0.1:8002|$ORA"',
         "```",

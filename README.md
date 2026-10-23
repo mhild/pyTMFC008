@@ -1,99 +1,99 @@
-# pyTMFC008 – TMF638 Service Inventory auf JSON-Spalten (PostgreSQL & Oracle)
+# pyTMFC008 – TMF638 Service Inventory on JSON columns (PostgreSQL & Oracle)
 
-PoC der TM Forum Komponente *Service Inventory* (TMFC008) mit TMF638-v5-API (FastAPI).
-Jeder Service wird als **ein JSON-Dokument in einer Spalte** gespeichert; CRUD und
-TMF630-Query-Parameter werden direkt auf die JSON-Operatoren der Datenbank abgebildet:
+PoC of the TM Forum component *Service Inventory* (TMFC008) with a TMF638 v5 API (FastAPI).
+Each service is stored as **one JSON document in a single column**; CRUD and
+TMF630 query parameters map directly onto the database's JSON operators:
 
 | | PostgreSQL 16 | Oracle 23ai Free |
 |---|---|---|
-| Spaltentyp | `JSONB` | `JSON` (nativ, OSON-Binärformat) |
+| Column type | `JSONB` | `JSON` (native, OSON binary format) |
 | Filter | `payload @? CAST(:p AS jsonpath)` | `JSON_EXISTS(payload, '<path>' PASSING :v0 AS "v0")` |
-| Index | 1 × GIN `jsonb_path_ops` (deckt jedes Attribut ab) | Multivalue-Indizes je Suchpfad (+ JSON Search Index, falls Oracle Text installiert) |
+| Index | 1 × GIN `jsonb_path_ops` (covers every attribute) | Multivalue indexes per search path (+ JSON search index if Oracle Text is installed) |
 
-## Starten
+## Getting started
 
 ```bash
-docker compose up -d db oracle            # Oracle braucht beim ersten Start 1–2 min
-docker compose up -d --build app          # Backend gemäß DATABASE_URL in .env (Default: PostgreSQL)
+docker compose up -d db oracle            # Oracle needs 1–2 min on first start
+docker compose up -d --build app          # backend according to DATABASE_URL in .env (default: PostgreSQL)
 DATABASE_URL='oracle+oracledb_async://app:secret@oracle:1521/?service_name=FREEPDB1' \
-  docker compose up -d --build app        # dieselbe App gegen Oracle
+  docker compose up -d --build app        # the same app against Oracle
 ```
 
-Der Entrypoint wartet auf die DB (`scripts/wait_for_db.py`) und führt `alembic upgrade head` aus.
-API: http://127.0.0.1:8080/service, OpenAPI-UI: http://127.0.0.1:8080/docs
+The entrypoint waits for the database (`scripts/wait_for_db.py`) and runs `alembic upgrade head`.
+API: http://127.0.0.1:8080/service, OpenAPI UI: http://127.0.0.1:8080/docs
 
-Lokal ohne Container (DBs aus compose, Ports 5432/1521):
+Locally without a container (databases from compose, ports 5432/1521):
 
 ```bash
 DATABASE_URL=postgresql+asyncpg://app:secret@localhost:5432/app_db alembic upgrade head
 DATABASE_URL=postgresql+asyncpg://app:secret@localhost:5432/app_db uvicorn openapi_server.main:app --port 8080
 ```
 
-## Abfragen (TMF630)
+## Queries (TMF630)
 
-| Art | Beispiel |
+| Kind | Example |
 |---|---|
-| Attributfilter (beliebiges Attribut) | `?serviceType=Cloud&state=active` |
-| ODER per Komma | `?state=active,suspended` |
-| Punkt-Pfad (auch durch Arrays) | `?relatedParty.partyOrPartyRole.name=Peter Meyer` |
-| mehrere Attribute desselben Array-Elements | `?serviceCharacteristic.name=mac&serviceCharacteristic.value=00:11:22:33:44:55` |
-| über eine Referenz auf einen anderen Service | `?serviceRelationship.service.serviceCharacteristic.name=mac&serviceRelationship.service.serviceCharacteristic.value=00:11:22:33:44:55` |
-| Operatoren | `?startDate.gte=2024-01-01`, `?startDate>=2024-01-01`, `.gt .lt .lte .ne` |
+| Attribute filter (any attribute) | `?serviceType=Cloud&state=active` |
+| OR via comma | `?state=active,suspended` |
+| Dotted path (also through arrays) | `?relatedParty.partyOrPartyRole.name=Peter Meyer` |
+| Several attributes of the same array element | `?serviceCharacteristic.name=mac&serviceCharacteristic.value=00:11:22:33:44:55` |
+| Through a reference to another service | `?serviceRelationship.service.serviceCharacteristic.name=mac&serviceRelationship.service.serviceCharacteristic.value=00:11:22:33:44:55` |
+| Operators | `?startDate.gte=2024-01-01`, `?startDate>=2024-01-01`, `.gt .lt .lte .ne` |
 | JSONPath | `?filter=$.serviceCharacteristic[?(@.name=='mac' && @.value=='00:11:22:33:44:55')]` |
-| Projektion | `?fields=name,state` (`id`, `href`, `@type` immer enthalten) |
-| Pagination | `?offset=200&limit=100` (Default 100, max. 1000); Header `X-Total-Count`, `X-Result-Count`; `206` bei Teilergebnis |
+| Projection | `?fields=name,state` (`id`, `href`, `@type` are always included) |
+| Pagination | `?offset=200&limit=100` (default 100, max. 1000); headers `X-Total-Count`, `X-Result-Count`; `206` for partial results |
 
-JSONPath unterstützt `.a`, `['a']`, `[*]`, `[?( … )]` mit `== != < <= > >=`, `&&`, `||`, `!`,
-Existenz (`[?(@.endDate)]`) sowie String/Zahl/Boolean/`null`.
-Filter innerhalb eines Arrays werden **pro Element** ausgewertet (`name` und `value` müssen zum selben Characteristic gehören).
-Für Attributfilter gilt dasselbe: Parameter mit gemeinsamem Pfad-Präfix werden zu einem Filter pro Element zusammengefasst
-(`$.serviceCharacteristic[*] ? (@.name == "mac" && @.value == "…")`). Wird *derselbe* Parameter wiederholt
-(`serviceCharacteristic.name=mac&serviceCharacteristic.name=vlan`), ist das eine eigene Bedingung: Beide Elemente müssen existieren.
+JSONPath supports `.a`, `['a']`, `[*]`, `[?( … )]` with `== != < <= > >=`, `&&`, `||`, `!`,
+existence (`[?(@.endDate)]`) and string/number/boolean/`null`.
+Filters inside an array are evaluated **per element** (`name` and `value` must belong to the same characteristic).
+The same applies to attribute filters: parameters sharing a path prefix are combined into one per-element filter
+(`$.serviceCharacteristic[*] ? (@.name == "mac" && @.value == "…")`). Repeating the *same* parameter
+(`serviceCharacteristic.name=mac&serviceCharacteristic.name=vlan`) is a separate condition: both elements must exist.
 
-### Suche über Relationships
+### Searching through relationships
 
-Ein Pfad, der durch `serviceRelationship[].service` oder `supportingService[]` hindurch weitergeht, adressiert den
-**referenzierten Service** (TMF638 `ServiceRefOrValue`). Beispiel: Finde alle Services A, die von einem Service B mit
-dieser MAC-Adresse abhängen:
+A path that continues through `serviceRelationship[].service` or `supportingService[]` addresses the
+**referenced service** (TMF638 `ServiceRefOrValue`). Example: find all services A that depend on a service B with
+this MAC address:
 
 ```
 ?serviceRelationship.relationshipType=DependentOn
 &serviceRelationship.service.serviceCharacteristic.name=mac
 &serviceRelationship.service.serviceCharacteristic.value=00:11:22:33:44:55
-# gleichwertig:
+# equivalent:
 ?filter=$.serviceRelationship[?(@.service.serviceCharacteristic[?(@.name=='mac' && @.value=='00:11:22:33:44:55')])]
 ```
 
-* Gefunden wird A, wenn B **per Referenz** (`service.id`) oder **eingebettet als Wert** passt.
-* `relationshipType` und die B-Bedingung gelten für **dieselbe** Relationship.
-* Filter auf `id`, `href` und `@referredType` der Referenz brauchen keinen Join.
-* Unterstützt wird eine Referenzebene pro Bedingung (A → B, nicht A → B → C).
+* A matches if B matches **by reference** (`service.id`) or **embedded by value**.
+* `relationshipType` and the condition on B apply to the **same** relationship.
+* Filters on the reference's `id`, `href` and `@referredType` need no join.
+* One reference level per condition is supported (A → B, not A → B → C).
 
-SQL: `service.id IN (eingebettet passt UNION A JOIN B ON A referenziert B.id WHERE B passt)`, bei PostgreSQL als
-`= ANY(ARRAY(…))`. B wird über den Index gefunden, A über den Index auf der Referenz-ID
-(PostgreSQL: Containment `@> {"serviceRelationship":[{"service":{"id":…}}]}` im GIN-Index; Oracle: Multivalue-Index
+SQL: `service.id IN (embedded value matches UNION A JOIN B ON A references B.id WHERE B matches)`, on PostgreSQL as
+`= ANY(ARRAY(…))`. B is found via the index, A via the index on the reference id
+(PostgreSQL: containment `@> {"serviceRelationship":[{"service":{"id":…}}]}` in the GIN index; Oracle: multivalue index
 `ix_svc_rel_id`). Code: `openapi_server/services/query/references.py`.
 
-**Sicherheit:** Attributnamen werden gegen `^[A-Za-z_@][A-Za-z0-9_@-]*$` geprüft; Werte gehen nie als SQL-Text in die Abfrage
-(PostgreSQL: gesamter jsonpath als Bind-Parameter, Werte JSON-escaped; Oracle: Werte als `PASSING`-Bind-Variablen).
-Ungültige Filter → `400` im TMF-`Error`-Format.
+**Security:** attribute names are checked against `^[A-Za-z_@][A-Za-z0-9_@-]*$`; values never enter the query as SQL text
+(PostgreSQL: the whole jsonpath is a bind parameter, values JSON-escaped; Oracle: values as `PASSING` bind variables).
+Invalid filters → `400` in the TMF `Error` format.
 
-Code: `openapi_server/services/query/` (`parser.py` → AST → `references.py` → `render.py`), Statement-Aufbau in `openapi_server/services/service.py`.
+Code: `openapi_server/services/query/` (`parser.py` → AST → `references.py` → `render.py`), statement construction in `openapi_server/services/service.py`.
 
 ## Tests
 
 ```bash
 pip install -r requirements-dev.txt
-pytest tests/pytest/test_query.py                          # Parser/Renderer, ohne DB
-TMF_BASE_URL=http://127.0.0.1:8080 pytest tests/pytest     # + Integrationstests gegen die laufende API
+pytest tests/pytest/test_query.py                          # parser/renderer, no database
+TMF_BASE_URL=http://127.0.0.1:8080 pytest tests/pytest     # + integration tests against the running API
 ```
 
-Die Integrationstests sind backend-neutral und laufen unverändert gegen beide Datenbanken.
+The integration tests are backend-neutral and run unchanged against both databases.
 
-**Ergebnisse:** [docs/test-report.md](docs/test-report.md): alle Testfälle mit Ergebnis je Backend, Testumgebung
-(System, Versionen, Datenbestand) sowie Benchmark und Ausführungspläne. Erzeugt mit `scripts/test_report.py`
-(Aufruf siehe Abschnitt *Reproduzieren* im Bericht).
-Die Bruno-Collection liegt unter `tests/TMFC008` (Env `dev`).
+**Results:** [docs/test-report.md](docs/test-report.md): all test cases with their result per backend, the test environment
+(system, versions, data volume) as well as benchmark and execution plans. Generated by `scripts/test_report.py`
+(see section *Reproduce* in the report for the invocation).
+The Bruno collection is in `tests/TMFC008` (env `dev`).
 
 ## Performance
 
@@ -102,39 +102,39 @@ DATABASE_URL=postgresql://app:secret@localhost:5432/app_db python scripts/seed.p
 DATABASE_URL=postgresql+asyncpg://app:secret@localhost:5432/app_db python scripts/bench.py --base-url http://127.0.0.1:8080 --plans
 ```
 
-`seed.py` lädt deterministische, realistische Services (~1,3 KB, 5 Characteristics inkl. eindeutiger `mac`) per COPY bzw. `executemany`;
-`bench.py` misst die Latenz über die HTTP-API und zeigt den Ausführungsplan des von der API erzeugten SQL.
-Die aktuellen Messwerte inkl. Plänen stehen im [Testbericht](docs/test-report.md#performance).
+`seed.py` loads deterministic, realistic services (~1.3 KB, 5 characteristics including a unique `mac`) via COPY or `executemany`;
+`bench.py` measures the latency via the HTTP API and shows the execution plan of the SQL generated by the API.
+Current measurements including plans are in the [test report](docs/test-report.md#performance).
 
-Messung mit 50 000 Services je DB (jeder zweite mit `DependentOn`-Relationship auf den vorherigen) (arm64-Devcontainer, beide DBs lokal, Latenz HTTP end-to-end inkl. `X-Total-Count`, 30 Läufe):
+Measured with 50,000 services per database (every second one with a `DependentOn` relationship to the previous one) (arm64 devcontainer, both databases local, end-to-end HTTP latency including `X-Total-Count`, 30 runs):
 
-| Abfrage | Treffer | PostgreSQL p50 | Oracle p50 | Plan |
+| Query | Matches | PostgreSQL p50 | Oracle p50 | Plan |
 |---|---:|---:|---:|---|
-| mac per JSONPath (`name && value`) | 1 | 1,9 ms | 1,7 ms | PG: Bitmap Index Scan GIN · Oracle: INDEX RANGE SCAN (MULTI VALUE) |
-| mac per Attributfilter | 1 | 2,5 ms | 1,5 ms | dto. |
-| mac, kein Treffer | 0 | 1,9 ms | 1,6 ms | dto. |
-| A mit Relationship zu B mit mac (Join) | 1 | 3,4 ms | 2,0 ms | B, A und eingebetteter Zweig jeweils über Index |
-| seltener relatedParty-Name | 10 | 1,9 ms | 1,7 ms | dto. |
-| serviceType + state (~3 %) | 1 713 | 8,4 ms | 20,8 ms | Index (PG: beide Bedingungen im GIN, Oracle: ein MVI + Filter) |
-| Bereich `startDate.gte` | 529 | 118 ms | 48 ms | kein Index → Full Scan (v. a. für `count(*)`) |
-| ohne Filter, Seite bei Offset 49 800 | 50 000 | 5,6 ms | 8,4 ms | Deferred Join über PK-Index |
+| mac via JSONPath (`name && value`) | 1 | 1.9 ms | 1.7 ms | PG: Bitmap Index Scan GIN · Oracle: INDEX RANGE SCAN (MULTI VALUE) |
+| mac via attribute filter | 1 | 2.5 ms | 1.5 ms | same |
+| mac, no match | 0 | 1.9 ms | 1.6 ms | same |
+| A with relationship to B with mac (join) | 1 | 3.4 ms | 2.0 ms | B, A and the embedded branch each via index |
+| rare relatedParty name | 10 | 1.9 ms | 1.7 ms | same |
+| serviceType + state (~3 %) | 1,713 | 8.4 ms | 20.8 ms | index (PG: both conditions in the GIN index, Oracle: one MVI + filter) |
+| range `startDate.gte` | 529 | 118 ms | 48 ms | no index → full scan (mainly for `count(*)`) |
+| no filter, page at offset 49,800 | 50,000 | 5.6 ms | 8.4 ms | deferred join via PK index |
 
-Einordnung:
-* Selektive Gleichheitssuchen laufen über den Index und skalieren damit logarithmisch statt linear.
-  Für 1 Mio. Datensätze ist ein ähnliches Niveau zu erwarten; nachgemessen wurde das hier nicht,
-  weil die Devcontainer-VM nur 20 GB Platte hat.
-* PostgreSQL indexiert mit einem GIN-Index **jedes** Attribut. Oracle-Multivalue-Indizes gelten pro Pfad;
-  sie sind in `alembic/versions/7c2e5b1a9f40_add_payload_indexes.py` definiert und für neue Suchattribute zu ergänzen.
-  Mit dem vollen Image `gvenzl/oracle-free:23` (inkl. Oracle Text) legt die Migration zusätzlich einen JSON Search Index für beliebige Pfade an.
-* Bereichs- und Ungleich-Filter nutzen keinen JSON-Index. Bei Bedarf hilft ein Ausdrucksindex auf das konkrete Attribut;
-  die teuerste Komponente ist dann der exakte `X-Total-Count`.
-* Tiefe Pagination: Erst werden nur die IDs sortiert und geblättert, danach die Dokumente geladen
-  (bei Oracle mit Join-Hint, weil der Optimizer die Seitengröße nicht kennt).
-* Relationship-Join: PostgreSQL schätzt jede JSON-Pfad-Bedingung pauschal auf 1 % der Zeilen und wählte deshalb
-  Parallel Seq Scans (36 ms). Für Abfragen mit Join schaltet die API Parallel Query per `SET LOCAL` ab → 3,4 ms.
-  Bei Oracle machten die Multivalue-Indizes auf eingebettete Werte (`ix_svc_rel_*`) aus 51 ms → 2 ms.
+Notes:
+* Selective equality searches use the index and therefore scale logarithmically instead of linearly.
+  A similar level is to be expected for 1 million records; this was not measured here
+  because the devcontainer VM has only a 20 GB disk.
+* PostgreSQL indexes **every** attribute with one GIN index. Oracle multivalue indexes are per path;
+  they are defined in `alembic/versions/7c2e5b1a9f40_add_payload_indexes.py` and need to be added for new search attributes.
+  With the full image `gvenzl/oracle-free:23` (including Oracle Text) the migration also creates a JSON search index for arbitrary paths.
+* Range and not-equal filters use no JSON index. If needed, an expression index on the specific attribute helps;
+  the most expensive part is then the exact `X-Total-Count`.
+* Deep pagination: only the ids are sorted and paged first, then the documents are loaded
+  (on Oracle with a join hint, because the optimizer doesn't know the page size).
+* Relationship join: PostgreSQL estimates every JSON path condition at a flat 1 % of the rows and therefore chose
+  parallel seq scans (36 ms). For queries with a join the API disables parallel query via `SET LOCAL` → 3.4 ms.
+  On Oracle the multivalue indexes on embedded values (`ix_svc_rel_*`) brought 51 ms down to 2 ms.
 
-## Hinweise
+## Remarks
 
-* `cryptography` ist auf 46.0.3 gepinnt: Version 50.0.2 (Abhängigkeit von `oracledb`) brach auf dem arm64-Host mit *Illegal instruction* ab.
-* Das Oracle-Image `23-slim` enthält kein Oracle Text (kein `SEARCH INDEX`), ist dafür deutlich kleiner als das volle Image.
+* `cryptography` is pinned to 46.0.3: version 50.0.2 (a dependency of `oracledb`) aborted with *Illegal instruction* on the arm64 host.
+* The Oracle image `23-slim` contains no Oracle Text (no `SEARCH INDEX`), but is considerably smaller than the full image.
