@@ -12,12 +12,26 @@ TMF630 query parameters map directly onto the database's JSON operators:
 
 ## Getting started
 
-```bash
-docker compose up -d db oracle            # Oracle needs 1–2 min on first start
-docker compose up -d --build app          # backend according to DATABASE_URL in .env (default: PostgreSQL)
-DATABASE_URL='oracle+oracledb_async://app:secret@oracle:1521/?service_name=FREEPDB1' \
-  docker compose up -d --build app        # the same app against Oracle
-```
+1. Start the databases:
+   ```bash
+   docker compose up -d db oracle            # Oracle needs 1–2 min on first start
+   ```
+2. Start the app – **either** against PostgreSQL, using `DATABASE_URL` from `.env` (default):
+   ```bash
+   docker compose up -d --build app
+   ```
+   **or** against Oracle, by overriding `DATABASE_URL` for this one command:
+   ```bash
+   DATABASE_URL='oracle+oracledb_async://app:secret@oracle:1521/?service_name=FREEPDB1' \
+     docker compose up -d --build app
+   ```
+
+The backend is chosen solely by `DATABASE_URL`. `docker-compose.yml` passes `${DATABASE_URL}` to the app, and
+Docker Compose takes a variable set in the shell over the value in `.env`. So the second variant doesn't need
+`.env` to be edited; alternatively switch the commented `DATABASE_URL` line in `.env`.
+There is only one `app` container: starting it with a different `DATABASE_URL` recreates it against the other
+database. Inside the compose network the databases are reached by their service names (`db`, `oracle`); from the host
+use `localhost` (see below).
 
 The entrypoint waits for the database (`scripts/wait_for_db.py`) and runs `alembic upgrade head`.
 API: http://127.0.0.1:8080/service, OpenAPI UI: http://127.0.0.1:8080/docs
