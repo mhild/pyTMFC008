@@ -1,5 +1,5 @@
-# Use Python 3.14 slim
-FROM python:3.14-slim
+# Use Python 3.12 slim
+FROM python:3.12-slim
 
 # Install minimal build deps (for asyncpg / psycopg etc.)
 RUN apt-get update && apt-get install -y --no-install-recommends \

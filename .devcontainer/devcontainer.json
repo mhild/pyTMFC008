@@ -1,0 +1,50 @@
+{
+  "name": "pytmfc008-dev",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+
+  "features": {
+    // Nested Docker daemon so `docker compose up -d --build` can be run and
+    // debugged from inside this devcontainer.
+    // moby:false - the python base image is on Debian "trixie", and the
+    // feature's default "moby" packages aren't published for trixie yet;
+    // this switches to installing regular Docker CE instead, which is.
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": false
+    },
+    // Claude Code depends on Node.js; the python base image doesn't
+    // include it, so it's added explicitly rather than relying on the
+    // claude-code feature's best-effort auto-install.
+    "ghcr.io/devcontainers/features/node:1": {},
+    // Official Anthropic feature - installs the Claude Code CLI globally.
+    // https://github.com/anthropics/devcontainer-features/tree/main/src/claude-code
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+  },
+
+  // Persists Claude Code's own auth/config across container rebuilds, so
+  // you don't have to re-authenticate every time the devcontainer is
+  // rebuilt (only on first use, or if the named volume is removed).
+  "mounts": [
+    "source=pytmfc008-claude-config-${devcontainerId},target=/home/vscode/.claude,type=volume"
+  ],
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+  },
+
+  "remoteUser": "vscode",
+  "containerUser": "vscode",
+
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": { "label": "pyTMFC008 (8000)" }
+  },
+
+  // The chown fixes a real problem: on first mount, a named volume gets
+  // root:root ownership unless the target directory already existed with
+  // the right ownership *in the image* - which it didn't (the claude-code
+  // feature's install step runs during the build, before the volume is
+  // ever mounted). Without this, `claude` (running as the non-root vscode
+  // user) can report a successful /login without being able to persist the
+  // token, and immediately show "Not logged in" again.
+  // requirements.txt is installed only if present.
+  "postCreateCommand": "sudo mkdir -p /home/vscode/.claude && sudo chown -R vscode:vscode /home/vscode/.claude && if [ -f requirements.txt ]; then pip install --break-system-packages -r requirements.txt; fi"
+}
