@@ -13,6 +13,8 @@ ZIP_SHA256="2ddea57dcafa6ec7881ff66046cfe93deb21546bdfc911ed52c37433336ae0d5"
 # host name of the app on the CTK's Docker network `tmf` (the kit's default NO_PROXY list contains it) and its port
 ALIAS="tmf638-ri"
 APP_PORT=8000
+# more services than this in the database slow the kit down (see the warning below)
+MAX_SERVICES=20
 
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(dirname "$here")"
@@ -56,6 +58,17 @@ else
   # the CTK container reaches the app by this alias; "already exists" if connected before
   docker network connect --alias "$ALIAS" tmf "$app" 2>/dev/null || true
   api_url="http://$ALIAS:$APP_PORT"
+  published="$(docker compose --project-directory "$root" port app "$APP_PORT" 2>/dev/null || true)"
+  [ -n "$published" ] && check_url="http://127.0.0.1:${published##*:}"
+fi
+check_url="${check_url:-$api_url}"   # where this script can reach the API (may not be possible: then no check)
+
+# the kit validates every returned service against the schema in its own process: with many services in the
+# database the list tests need 5+ s each, although the API answers in milliseconds
+total="$(curl -fsS -m 10 -D - -o /dev/null "$check_url/service?limit=1" 2>/dev/null | tr -d '\r' | awk -F': ' 'tolower($1)=="x-total-count" {print $2}')" || true
+if [ -n "${total:-}" ] && [ "$total" -gt "$MAX_SERVICES" ]; then
+  echo "Warning: the database holds $total services. The run passes but is slow (the 'Test schema' steps of the list" >&2
+  echo "         requests take 5+ s each); use an empty database for a quick, clean run. See ctk/README.md." >&2
 fi
 
 # the kit appends the resource path (/service) to "url"; the API serves it at the root

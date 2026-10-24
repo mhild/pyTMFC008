@@ -29,7 +29,7 @@ Prerequisites: Docker, `curl`, `python3`. The API has to run with a database; th
 * Last run (current code, empty database): 37 tests, 37 passing, the slowest test 0.25 s. With a filled database
   (e.g. 50,000 seeded services) the *Test schema* steps of the list requests take 5+ s: the API answers in a few
   milliseconds, but the kit validates the 100 returned services against the schema on the client. Use an empty or small
-  database for the run.
+  database for the run; the script warns when the API holds more than 20 services.
 * The **component CTK** for TMFC008 (`TMFC008-ServiceInventory/CTK/componentCTK` in
   [tmforum-rand/TMForum-ODA-Ready-for-publication](https://github.com/tmforum-rand/TMForum-ODA-Ready-for-publication))
   tests the component as part of an ODA Canvas (Kubernetes + Helm) and is not covered here.
