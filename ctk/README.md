@@ -18,6 +18,14 @@ The script
 * runs the kit's `run.sh` and leaves the result in `ctk/work/ctk/REPORT.HTML` (open it in a browser; all mandatory test
   cases must pass).
 
+With an API that runs with `AUTH_MODE=basic` or `oauth2` the script needs credentials of a user with the `write` role,
+which it puts into the `headers` of the kit's `config.json`:
+
+```bash
+CTK_BASIC=writer:writer-secret ctk/run-api-ctk.sh      # HTTP Basic
+CTK_BEARER=<access token> ctk/run-api-ctk.sh           # OAuth2 (the token has to outlive the run: it takes about 30 s)
+```
+
 Prerequisites: Docker, `curl`, `python3`. The API has to run with a database; the data of the run stays in it.
 
 ## Notes
@@ -26,7 +34,7 @@ Prerequisites: Docker, `curl`, `python3`. The API has to run with a database; th
   expects `404` for URLs containing `ctk-missing-id`.
 * The payloads it creates and patches are in the kit's `config.json` (`payloads.Service.POST` / `PATCH`); they pass this
   API's schema validation unchanged.
-* Last run (current code, empty database): 37 tests, 37 passing, the slowest test 0.25 s. With a filled database
+* Last run (current code, empty database): 37 tests, 37 passing, the slowest test 0.25 s - without authentication and with `AUTH_MODE=basic`. With a filled database
   (e.g. 50,000 seeded services) the *Test schema* steps of the list requests take 5+ s: the API answers in a few
   milliseconds, but the kit validates the 100 returned services against the schema on the client. Use an empty or small
   database for the run; the script warns when the API holds more than 20 services.
