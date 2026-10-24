@@ -35,6 +35,8 @@ def queries(n: int):
         ("related to B with mac, no match (join)",
          {"serviceRelationship.service.serviceCharacteristic.name": "mac",
           "serviceRelationship.service.serviceCharacteristic.value": "ff:ff:ff:ff:ff:ff"}),
+        ("referenced service state (join, ~3%)",
+         {"serviceType": "Cloud", "serviceRelationship.service.state": "suspended"}),
         ("rare relatedParty name", {"relatedParty.partyOrPartyRole.name": "Customer 00001"}),
         ("serviceType + state (~3%)", {"serviceType": "Cloud", "state": "suspended"}),
         ("range startDate.gte (no index)", {"startDate.gte": "2025-06-01"}),

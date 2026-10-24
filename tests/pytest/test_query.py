@@ -164,7 +164,9 @@ def test_jsonpath_and_attribute_syntax_resolve_alike():
 def test_reference_sql_joins_by_id(dialect):
     (path,) = parse_query_params(REL_PARAMS)
     sql = str(render_condition(path, dialect, 0))
-    prefix = "service.id = ANY(ARRAY(" if dialect == "postgresql" else "service.id IN ("
+    prefix = (
+        "service.id = ANY(ARRAY(" if dialect == "postgresql" else "service.id IN (SELECT /*+ HASH_SJ */ id FROM ("
+    )
     assert sql.startswith(prefix + "SELECT s1.id FROM service s1 WHERE ")
     assert " UNION SELECT s2.id FROM service s2 JOIN service t2 ON " in sql
     assert "'x'" not in sql and '"x"' not in sql  # values are bound
@@ -172,6 +174,7 @@ def test_reference_sql_joins_by_id(dialect):
         assert "s2.payload @> jsonb_build_object('serviceRelationship', jsonb_build_array(" in sql
     else:
         assert "JSON_VALUE(t2.payload, '$.id') AS \"ref_id\"" in sql
+        assert sql.endswith(" WHERE ROWNUM > 0)")  # evaluated once, not unnested into a correlated filter
 
 
 @pytest.mark.parametrize(

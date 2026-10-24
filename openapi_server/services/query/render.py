@@ -17,7 +17,7 @@ A condition through a service reference (see references.py) becomes
                    WHERE <t matches>)          (PostgreSQL: = ANY(ARRAY(...)))
 
 so both the referenced documents (t) and the referencing ones (s, by the id
-of t) are found via index.
+of t) are found via index. The subquery is evaluated once, not per row.
 
 Oracle multivalue indexes reject object values, so characteristic values are
 indexed on the shadow column `search` (a trigger copies the characteristics
@@ -219,7 +219,10 @@ def _reference_sql(path: Path, ref: Ref, dialect: str, bind: str) -> Tuple[str, 
         # PostgreSQL - lacking statistics for JSON paths - hash-joins all service ids.
         sql = f"service.id = ANY(ARRAY({subquery}))"
     else:
-        sql = f"service.id IN ({subquery})"
+        # Left to itself Oracle unnests the subquery into a correlated filter that probes the referenced
+        # services once per candidate row (minutes on 1M rows). ROWNUM keeps it a view that is evaluated once,
+        # HASH_SJ joins it to the candidates with a hash semi join instead of one index probe per result id.
+        sql = f"service.id IN (SELECT /*+ HASH_SJ */ id FROM ({subquery}) WHERE ROWNUM > 0)"
     return sql, {**binds, **target_binds, **join_binds}
 
 
