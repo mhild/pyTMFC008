@@ -51,7 +51,9 @@ def model(client):
         "A": post(name="A", serviceType=cfs, serviceRelationship=[relationship(ref(b))]),
         "E": post(name="E", serviceType=cfs, serviceRelationship=[relationship(
             {"@type": "Service", "name": "embedded B", "state": "designed", "serviceSpecification": SPEC_REF,
-             "serviceCharacteristic": [characteristic("mac", MAC)]}, "ReliesOn")]),
+             "serviceCharacteristic": [characteristic("mac", MAC),
+                                       {"name": "cfg", "value": {"mac": MAC}, "@type": "ObjectCharacteristic"}]},
+            "ReliesOn")]),
         "C": post(name="C", serviceType=cfs, serviceRelationship=[relationship(ref(d))]),
         "F": post(name="F", serviceType=cfs, serviceRelationship=[relationship(ref(g))]),
         "H": post(name="H", serviceType=cfs, supportingService=[ref(b)]),

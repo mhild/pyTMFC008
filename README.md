@@ -226,7 +226,11 @@ Notes:
 
 * `cryptography` is pinned to 46.0.3: version 50.0.2 (a dependency of `oracledb`) aborted with *Illegal instruction* on the arm64 host.
 * The Oracle image `23-slim` contains no Oracle Text (no `SEARCH INDEX`), but is considerably smaller than the full image.
-* **Known limitation (Oracle):** services with an object-valued characteristic (`ObjectCharacteristic`,
-  `ObjectArrayCharacteristic` with objects) can't be stored – the insert fails with `ORA-40456`, because the multivalue
-  index on `serviceCharacteristic.value` (and the `ix_svc_*_char_value` indexes on embedded services) only accept
-  scalar values and Oracle requires `ERROR ON ERROR` for multivalue indexes. PostgreSQL is not affected.
+* **Object-valued characteristics on Oracle:** multivalue indexes must be created with `ERROR ON ERROR`, so an index on
+  `serviceCharacteristic.value` would reject every service with an `ObjectCharacteristic` (`ORA-40456`). The
+  characteristic value indexes (`ix_service_char_value`, `ix_svc_rel_char_value`, `ix_svc_sup_char_value`) are therefore
+  built on a shadow column `search` that a trigger fills with the characteristic names and values without objects
+  (migration `c5d7e9f1a2b4`, ~15 % extra storage). A filter that only compares characteristic names/values with
+  constants is checked on both columns – `search` for the index, `payload` for the exact result; filters into object
+  values (`serviceCharacteristic.value.vCPE_IP=…`), `exists` and negations use `payload` only (no value index).
+  PostgreSQL needs none of this: the GIN index accepts any value.

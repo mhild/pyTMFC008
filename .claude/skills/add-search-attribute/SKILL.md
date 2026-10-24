@@ -29,6 +29,11 @@ making it **fast**.
    * If the attribute should also be searchable **through references** (`serviceRelationship.service.<path>`,
      `supportingService.<path>`), add the same index for those prefixes (`ix_svc_rel_<short>`, `ix_svc_sup_<short>`) –
      otherwise the "embedded by value" branch of a reference filter scans the table.
+   * Every value on the path must be scalar (or an array of scalars): Oracle requires `ERROR ON ERROR` for multivalue
+     indexes, so a single object value makes the insert fail (`ORA-40456`). For paths that can hold objects (like
+     characteristic values) copy them without objects into the `search` shadow column instead – see
+     `alembic/versions/c5d7e9f1a2b4_add_oracle_search_column.py` (trigger + backfill) and `uses_search_column()` in
+     `openapi_server/services/query/render.py`, which decides which conditions are also checked on `search`.
    * `.string()` indexes string values. For numeric attributes the parser also compares against the number
      (`_value_alternatives`), so check in the plan whether a `.number()` index is needed as well.
 3. **Integration test** in `tests/pytest/test_api.py` (or `test_relationships.py` for reference paths): create services

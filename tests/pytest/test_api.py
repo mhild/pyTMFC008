@@ -223,8 +223,6 @@ def test_create_rejects_invalid_service(client, run_id, change, error_path):
 def test_create_accepts_spec_example(client):
     with open(SPEC_FILE, encoding="utf-8") as f:
         example = yaml.safe_load(f)["components"]["examples"]["Create_Service_request"]["value"]
-    # Oracle can't store object-valued characteristics (multivalue index on serviceCharacteristic.value, see README)
-    example["serviceCharacteristic"] = [c for c in example["serviceCharacteristic"] if c["@type"] != "ObjectCharacteristic"]
     r = client.post("/service", json=example)
     assert r.status_code == 201, r.text
     client.delete(f"/service/{r.json()['id']}")
@@ -236,6 +234,65 @@ def test_patch_must_keep_the_service_valid(client, services):
     assert client.patch(f"/service/{s['id']}", json={"state": "running"}, headers=MERGE).status_code == 400
     assert client.patch(f"/service/{s['id']}", json={"@type": None}, headers=MERGE).status_code == 400
     assert client.get(f"/service/{s['id']}").json() == before
+
+
+# --------------------------------------------------------------------------- #
+# Object-valued characteristics (Oracle: indexed via the `search` shadow column)
+# --------------------------------------------------------------------------- #
+
+def object_characteristic(name, value):
+    return {"name": name, "valueType": "object", "value": value, "@type": "ObjectCharacteristic"}
+
+
+@pytest.fixture(scope="module")
+def with_objects(client, run_id):
+    vcpe = {"@type": "VCPE", "vCPE_IP": f"10.0.0.1-{run_id}", "MaxTxRate": 300}
+    docs = [
+        make_service(run_id, f"o1-{run_id}", serviceType=f"Obj-{run_id}",
+                     serviceCharacteristic=[object_characteristic("vCPE", vcpe),
+                                            {"name": "mac", "value": f"o1-{run_id}", "@type": "StringCharacteristic"}]),
+        make_service(run_id, f"o2-{run_id}", serviceType=f"Obj-{run_id}",
+                     serviceCharacteristic=[{"name": "tags", "value": [f"t-{run_id}", {"x": 1}], "@type": "Characteristic"}]),
+    ]
+    created = []
+    for doc in docs:
+        r = client.post("/service", json=doc)
+        assert r.status_code == 201, r.text
+        created.append(r.json())
+    yield created
+    for s in created:
+        client.delete(f"/service/{s['id']}")
+
+
+def test_scalar_value_next_to_an_object_value(client, run_id, with_objects):
+    mac = f"o1-{run_id}"
+    assert ids(client.get("/service", params={"serviceCharacteristic.name": "mac", "serviceCharacteristic.value": mac})) == {
+        with_objects[0]["id"]
+    }
+    r = client.get("/service", params={"filter": f"$.serviceCharacteristic[?(@.name=='mac' && @.value=='{mac}')]"})
+    assert ids(r) == {with_objects[0]["id"]}
+
+
+def test_scalar_in_an_array_with_objects(client, run_id, with_objects):
+    assert ids(client.get("/service", params={"serviceCharacteristic.value": f"t-{run_id}"})) == {with_objects[1]["id"]}
+
+
+def test_filter_inside_an_object_value(client, run_id, with_objects):
+    r = client.get("/service", params={"serviceCharacteristic.value.vCPE_IP": f"10.0.0.1-{run_id}"})
+    assert ids(r) == {with_objects[0]["id"]}
+    r = client.get("/service", params={"serviceType": f"Obj-{run_id}", "filter": "$.serviceCharacteristic[?(@.value.MaxTxRate > 200)]"})
+    assert ids(r) == {with_objects[0]["id"]}
+
+
+def test_patch_scalar_value_to_object(client, run_id, with_objects):
+    s = with_objects[1]
+    patch = {"serviceCharacteristic": [object_characteristic("tags", {"t": f"t-{run_id}"})]}
+    assert client.patch(f"/service/{s['id']}", json=patch, headers=MERGE).status_code == 200
+    assert ids(client.get("/service", params={"serviceCharacteristic.value": f"t-{run_id}"})) == set()
+    assert ids(client.get("/service", params={"serviceCharacteristic.value.t": f"t-{run_id}"})) == {s["id"]}
+    patch = {"serviceCharacteristic": [{"name": "tags", "value": f"t-{run_id}", "@type": "StringCharacteristic"}]}
+    assert client.patch(f"/service/{s['id']}", json=patch, headers=MERGE).status_code == 200
+    assert ids(client.get("/service", params={"serviceCharacteristic.value": f"t-{run_id}"})) == {s["id"]}
 
 
 # --------------------------------------------------------------------------- #

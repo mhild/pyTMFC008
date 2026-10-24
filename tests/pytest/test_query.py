@@ -3,7 +3,13 @@ import pytest
 
 from openapi_server.services.query.parser import FilterError, SortKey, parse_query_params, parse_sort
 from openapi_server.services.query.references import embedded_variant, join_variant, single_ref
-from openapi_server.services.query.render import oracle_json_path, pg_jsonpath, render_condition, render_sort
+from openapi_server.services.query.render import (
+    oracle_json_path,
+    pg_jsonpath,
+    render_condition,
+    render_sort,
+    uses_search_column,
+)
 
 MAC_FILTER = "$.serviceCharacteristic[?(@.name=='mac' && @.value=='00:11:22:33:44:55')]"
 
@@ -232,3 +238,35 @@ def test_invalid_sort_is_rejected(value):
 )
 def test_render_sort(dialect, expected):
     assert [c.text for c in render_sort([SortKey(("a", "b"), True)], dialect)] == expected
+
+
+@pytest.mark.parametrize(
+    "params, expected",
+    [
+        ([("filter", MAC_FILTER)], True),
+        ([("serviceCharacteristic.value", "x")], True),
+        ([("serviceCharacteristic.name", "mac")], False),  # no value compared: name index on payload is enough
+        ([("serviceType", "Cloud")], False),
+        ([("serviceCharacteristic.value.vCPE_IP", "1")], False),  # inside an object value: not in `search`
+        ([("filter", "$.serviceCharacteristic[?(@.value)]")], False),  # exists: object values are removed
+        ([("filter", "$.serviceCharacteristic[?(@.name=='mac' && !(@.value=='x'))]")], False),
+        ([("filter", "$.serviceCharacteristic[?(@.name=='mac' || @.value=='x')]")], True),
+        ([("filter", "$[?(@.serviceType=='a' && @.serviceCharacteristic[?(@.value=='x')])]")], False),
+    ],
+)
+def test_uses_search_column(params, expected):
+    assert uses_search_column(one(params)) is expected
+
+
+def test_oracle_checks_characteristic_values_on_search_and_payload():
+    sql = render_condition(one([("filter", MAC_FILTER)]), "oracle", 0).text
+    assert sql.startswith("(JSON_EXISTS(search, ") and " AND JSON_EXISTS(payload, " in sql
+    assert "search" not in render_condition(one([("filter", MAC_FILTER)]), "postgresql", 0).text
+
+
+def test_embedded_and_referenced_branches_use_search():
+    path = one([("serviceRelationship.service.serviceCharacteristic.name", "mac"),
+                ("serviceRelationship.service.serviceCharacteristic.value", "00:11")])
+    sql = render_condition(path, "oracle", 0).text
+    assert "JSON_EXISTS(s1.search, " in sql and "JSON_EXISTS(t2.search, " in sql
+    assert "s2.search" not in sql  # the join by reference id stays on payload

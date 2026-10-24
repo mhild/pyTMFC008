@@ -19,13 +19,23 @@ A condition through a service reference (see references.py) becomes
 so both the referenced documents (t) and the referencing ones (s, by the id
 of t) are found via index.
 
+Oracle multivalue indexes reject object values, so characteristic values are
+indexed on the shadow column `search` (a trigger copies the characteristics
+without objects, see migration c5d7e9f1a2b4). A condition that only compares
+characteristic names/values with constants is checked on both columns:
+
+    JSON_EXISTS(search, '<path>') AND JSON_EXISTS(payload, '<path>')
+
+The first uses the index; it can't miss a match, since a scalar never equals an
+object. The second gives the exact result.
+
 Sorting (render_sort) orders by every sort attribute twice: JSON numbers
 numerically, then the value as text in byte order - the same order on both
 backends (Oracle's JSON_VALUE alone would compare numbers as text).
 """
 
 import json
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from sqlalchemy import TextClause, text
 
@@ -102,6 +112,62 @@ def oracle_json_path(path: Path, bind_prefix: str) -> Tuple[str, Dict[str, str]]
     return _path_text(path, "$", literal), binds
 
 
+# characteristic arrays copied into Oracle's `search` column
+_SEARCH_CHARACTERISTICS = (
+    ("serviceCharacteristic",),
+    ("serviceRelationship", "service", "serviceCharacteristic"),
+    ("supportingService", "serviceCharacteristic"),
+)
+_SEARCH_VALUE_PATHS = {c + ("value",) for c in _SEARCH_CHARACTERISTICS}
+_SEARCH_PATHS = _SEARCH_VALUE_PATHS | {c + ("name",) for c in _SEARCH_CHARACTERISTICS}
+
+
+def _compared_paths(path: Path, prefix: Tuple[str, ...]) -> Optional[Tuple[List[Tuple[str, ...]], Tuple[str, ...]]]:
+    """(absolute key paths compared with constants, key path at the end of `path`);
+    None if a filter uses anything but comparisons with constants."""
+    found: List[Tuple[str, ...]] = []
+    keys = prefix
+    for step in path.steps:
+        if isinstance(step, Key):
+            keys += (step.name,)
+        elif isinstance(step, Filter):
+            inner = _predicate_compared_paths(step.predicate, keys)
+            if inner is None:
+                return None
+            found += inner
+    return found, keys
+
+
+def _predicate_compared_paths(pred: Predicate, prefix: Tuple[str, ...]) -> Optional[List[Tuple[str, ...]]]:
+    if isinstance(pred, Compare):
+        result = None if isinstance(pred.value, Var) else _compared_paths(pred.path, prefix)
+        return None if result is None else result[0] + [result[1]]
+    if isinstance(pred, (And, Or)):
+        found: List[Tuple[str, ...]] = []
+        for item in pred.items:
+            inner = _predicate_compared_paths(item, prefix)
+            if inner is None:
+                return None
+            found += inner
+        return found
+    if isinstance(pred, Exists) and pred.path.steps and isinstance(pred.path.steps[-1], Filter):
+        # an element matching the filter (e.g. an embedded service's characteristic) is in `search` as well
+        result = _compared_paths(pred.path, prefix)
+        return None if result is None else result[0]
+    return None  # other Exists, Not, Ref: an object removed from `search` could change the result
+
+
+def uses_search_column(path: Path) -> bool:
+    """Oracle: can `path` also be checked on the `search` column (and use its characteristic value indexes)?"""
+    if not path.steps or not isinstance(path.steps[-1], Filter):
+        return False
+    result = _compared_paths(path, ())
+    if result is None:
+        return False
+    found = result[0]
+    return all(p in _SEARCH_PATHS for p in found) and any(p in _SEARCH_VALUE_PATHS for p in found)
+
+
 def _exists_sql(path: Path, dialect: str, bind: str, column: str, extra_passing: str = "") -> Tuple[str, Dict]:
     """SQL condition "document in `column` matches `path`" and its bind values."""
     if dialect == "postgresql":
@@ -113,7 +179,11 @@ def _exists_sql(path: Path, dialect: str, bind: str, column: str, extra_passing:
         passing = [f':{name} AS "v{i}"' for i, name in enumerate(binds)]
         if extra_passing:
             passing.append(extra_passing)
-        sql = f"JSON_EXISTS({column}, '{json_path}'" + (f" PASSING {', '.join(passing)}" if passing else "") + ")"
+        passing_sql = f" PASSING {', '.join(passing)}" if passing else ""
+        sql = f"JSON_EXISTS({column}, '{json_path}'{passing_sql})"
+        if column.endswith("payload") and uses_search_column(path):
+            search_column = column[: -len("payload")] + "search"
+            sql = f"(JSON_EXISTS({search_column}, '{json_path}'{passing_sql}) AND {sql})"
         return sql, binds
     raise ValueError(f"Unsupported database dialect: {dialect}")
 
