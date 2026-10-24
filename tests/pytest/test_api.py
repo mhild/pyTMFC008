@@ -278,7 +278,8 @@ def test_scalar_in_an_array_with_objects(client, run_id, with_objects):
 
 
 def test_filter_inside_an_object_value(client, run_id, with_objects):
-    r = client.get("/service", params={"serviceCharacteristic.value.vCPE_IP": f"10.0.0.1-{run_id}"})
+    # a path inside an object value has no index: combined with an indexed condition, otherwise it scans the table
+    r = client.get("/service", params={"serviceType": f"Obj-{run_id}", "serviceCharacteristic.value.vCPE_IP": f"10.0.0.1-{run_id}"})
     assert ids(r) == {with_objects[0]["id"]}
     r = client.get("/service", params={"serviceType": f"Obj-{run_id}", "filter": "$.serviceCharacteristic[?(@.value.MaxTxRate > 200)]"})
     assert ids(r) == {with_objects[0]["id"]}
@@ -289,7 +290,8 @@ def test_patch_scalar_value_to_object(client, run_id, with_objects):
     patch = {"serviceCharacteristic": [object_characteristic("tags", {"t": f"t-{run_id}"})]}
     assert client.patch(f"/service/{s['id']}", json=patch, headers=MERGE).status_code == 200
     assert ids(client.get("/service", params={"serviceCharacteristic.value": f"t-{run_id}"})) == set()
-    assert ids(client.get("/service", params={"serviceCharacteristic.value.t": f"t-{run_id}"})) == {s["id"]}
+    r = client.get("/service", params={"serviceType": f"Obj-{run_id}", "serviceCharacteristic.value.t": f"t-{run_id}"})
+    assert ids(r) == {s["id"]}
     patch = {"serviceCharacteristic": [{"name": "tags", "value": f"t-{run_id}", "@type": "StringCharacteristic"}]}
     assert client.patch(f"/service/{s['id']}", json=patch, headers=MERGE).status_code == 200
     assert ids(client.get("/service", params={"serviceCharacteristic.value": f"t-{run_id}"})) == {s["id"]}

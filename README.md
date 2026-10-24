@@ -258,6 +258,9 @@ Notes:
 * PostgreSQL indexes **every** attribute with one GIN index. Oracle multivalue indexes are per path;
   they are defined in `alembic/versions/7c2e5b1a9f40_add_payload_indexes.py` and need to be added for new search attributes.
   With the full image `gvenzl/oracle-free:23` (including Oracle Text) the migration also creates a JSON search index for arbitrary paths.
+* Paths inside object values (e.g. `serviceCharacteristic.value.vCPE_IP`, the keys are free-form) have no index either:
+  on its own such a filter scans the table (~10 s for 1 million services on Oracle), combined with an indexed condition
+  (e.g. `serviceType=…`) it is as fast as that one.
 * Range and not-equal filters use no JSON index. If needed, an expression index on the specific attribute helps;
   the most expensive part is then the exact `X-Total-Count`.
 * Deep pagination: only the ids are sorted and paged first, then the documents are loaded
