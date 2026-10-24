@@ -51,6 +51,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       SQL_ECHO: ${SQL_ECHO:-false}
       HISTORY_ENABLED: ${HISTORY_ENABLED:-false}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # event callbacks to a listener on the host (Linux needs this)
     ports:
       - "8080:8000"
 
