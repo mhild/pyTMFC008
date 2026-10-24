@@ -10,7 +10,8 @@ pass unchanged on both. For full results plus benchmark use the `test-report` sk
 
 1. **Unit tests (no database):** `pytest tests/pytest/test_query.py -q`
    – parser and both SQL renderers; fast, run them first.
-2. **Databases:** `docker compose up -d db oracle`, wait for `healthy` in `docker compose ps`.
+2. **Databases:** `docker compose up -d db oracle`, wait for `healthy` in `docker compose ps`. An external database
+   works the same: point `PG` / `ORA` at its host instead (the stack's databases are only a convenience).
    ```bash
    export PG=postgresql+asyncpg://app:secret@localhost:5432/app_db
    export ORA='oracle+oracledb_async://app:secret@localhost:1521/?service_name=FREEPDB1'

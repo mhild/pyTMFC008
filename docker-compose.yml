@@ -1,5 +1,11 @@
+# The databases are a convenience for when no database is at hand. Each belongs to a profile, so
+#   docker compose --profile postgres up -d     starts the app and PostgreSQL
+#   docker compose --profile oracle up -d       starts the app and Oracle
+#   docker compose up -d app                    starts only the app (DATABASE_URL points to an external database)
+# Naming a service (docker compose up -d db oracle) starts it regardless of the profiles.
 services:
   db:
+    profiles: ["postgres"]
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -18,6 +24,7 @@ services:
   # Oracle Database 23ai Free (native JSON column type), arm64 + amd64.
   # Creates the application schema APP_USER in the pluggable DB FREEPDB1.
   oracle:
+    profiles: ["oracle"]
     image: gvenzl/oracle-free:23-slim
     environment:
       ORACLE_PASSWORD: ${ORACLE_PASSWORD}
@@ -34,9 +41,10 @@ services:
       retries: 30
       start_period: 30s
 
-  # Backend is selected via DATABASE_URL (see .env), e.g.
-  #   DATABASE_URL=oracle+oracledb_async://app:secret@oracle:1521/?service_name=FREEPDB1 docker compose up -d app
-  # The entrypoint waits until the configured DB accepts connections.
+  # Backend is selected via DATABASE_URL (see .env): a database of this stack (host `db` / `oracle`) or an external
+  # one, e.g.
+  #   DATABASE_URL=oracle+oracledb_async://app:secret@dbhost:1521/?service_name=FREEPDB1 docker compose up -d app
+  # The entrypoint waits until the configured DB accepts connections and migrates it.
   app:
     build: .
     environment:

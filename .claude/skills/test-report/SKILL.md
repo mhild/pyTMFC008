@@ -10,7 +10,8 @@ description: Regenerate docs/test-report.md by running the pytest suite and the 
 1. **Commit first.** The report records the git commit; with a dirty tree it says "+ uncommitted changes".
    Commit the code change, then commit the regenerated report separately ("Regenerate test report for <hash>").
 2. **Databases:** `docker compose up -d db oracle` and wait until both are `healthy` (`docker compose ps`;
-   Oracle needs 1–2 min on first start).
+   Oracle needs 1–2 min on first start). External databases work as well: set `PG` / `ORA` in step 3 to their URLs.
+   The report records version and row count of whatever it ran against.
 3. **Environment:**
    ```bash
    export PG=postgresql+asyncpg://app:secret@localhost:5432/app_db

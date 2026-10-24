@@ -12,31 +12,46 @@ TMF630 query parameters map directly onto the database's JSON operators:
 
 ## Getting started
 
-1. Start the databases:
-   ```bash
-   docker compose up -d db oracle            # Oracle needs 1–2 min on first start
-   ```
-2. Start the app – **either** against PostgreSQL, using `DATABASE_URL` from `.env` (default):
-   ```bash
-   docker compose up -d --build app
-   ```
-   **or** against Oracle, by overriding `DATABASE_URL` for this one command:
-   ```bash
-   DATABASE_URL='oracle+oracledb_async://app:secret@oracle:1521/?service_name=FREEPDB1' \
-     docker compose up -d --build app
-   ```
+The API works with any PostgreSQL 16 or Oracle 23ai database; the backend is chosen solely by `DATABASE_URL`.
+The databases in `docker-compose.yml` are a convenience for when none is at hand – each one belongs to a compose
+profile and only starts when asked for.
 
-The backend is chosen solely by `DATABASE_URL`. `docker-compose.yml` passes `${DATABASE_URL}` to the app, and
-Docker Compose takes a variable set in the shell over the value in `.env`. So the second variant doesn't need
-`.env` to be edited; alternatively switch the commented `DATABASE_URL` line in `.env`.
-There is only one `app` container: starting it with a different `DATABASE_URL` recreates it against the other
-database. Inside the compose network the databases are reached by their service names (`db`, `oracle`); from the host
-use `localhost` (see below).
+**With a database of the stack** (hostnames are the compose service names):
+
+```bash
+docker compose --profile postgres up -d --build        # app + PostgreSQL (DATABASE_URL from .env, the default)
+```
+```bash
+DATABASE_URL='oracle+oracledb_async://app:secret@oracle:1521/?service_name=FREEPDB1' \
+  docker compose --profile oracle up -d --build         # app + Oracle (needs 1–2 min on first start)
+```
+
+**With an external database** – no database container is started:
+
+```bash
+DATABASE_URL='oracle+oracledb_async://app:secret@dbhost:1521/?service_name=FREEPDB1' docker compose up -d --build app
+DATABASE_URL='postgresql+asyncpg://app:secret@dbhost:5432/app_db'                    docker compose up -d --build app
+```
+
+Docker Compose takes a variable set in the shell over the value in `.env`; alternatively edit the `DATABASE_URL`
+line there. The host must be reachable from the container. There is only one `app` container: starting it with a
+different `DATABASE_URL` recreates it against the other database. From the host, the databases of the stack are
+reached at `localhost` (see below). Starting the services by name (`docker compose up -d db oracle`) works too and
+ignores the profiles.
+
+Requirements for an external database:
+
+* The user owns the schema and may create tables, indexes and (Oracle) triggers; on Oracle also
+  `EXECUTE ON DBMS_STATS` for the statistics the migrations gather. The app runs `alembic upgrade head` on start.
+* Oracle: 23ai or later (native `JSON` type, multivalue indexes). On a large table (1M rows) the migrations
+  that fill the shadow column `search` run in batches on separate connections, because the PGA of a single session
+  would exceed `PGA_AGGREGATE_LIMIT` on Oracle Free.
+* The Oracle index and column migrations are not transactional; after a failed one, clean up by hand before retrying.
 
 The entrypoint waits for the database (`scripts/wait_for_db.py`) and runs `alembic upgrade head`.
 API: http://127.0.0.1:8080/service, OpenAPI UI: http://127.0.0.1:8080/docs
 
-Locally without a container (databases from compose, ports 5432/1521):
+Locally without a container (databases from compose on ports 5432/1521, or any other host in the URL):
 
 ```bash
 DATABASE_URL=postgresql+asyncpg://app:secret@localhost:5432/app_db alembic upgrade head
