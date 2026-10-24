@@ -14,7 +14,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -33,7 +33,7 @@ services:
     volumes:
       - oracle_data:/opt/oracle/oradata
     ports:
-      - "1521:1521"
+      - "${ORACLE_PORT:-1521}:1521"
     healthcheck:
       test: ["CMD", "healthcheck.sh"]
       interval: 10s
@@ -61,7 +61,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"  # event callbacks to a listener on the host (Linux needs this)
     ports:
-      - "8080:8000"
+      - "${APP_PORT:-8080}:8000"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/readyz', timeout=3)"]
       interval: 10s
@@ -70,7 +70,7 @@ services:
       start_period: 30s
 
   # Optional OAuth2 / OpenID Connect provider for AUTH_MODE=oauth2 (profile `keycloak`): the realm `tmf` is imported
-  # from keycloak/tmf-realm.json. Tokens carry the issuer http://localhost:8180/realms/tmf (KC_HOSTNAME) whichever
+  # from keycloak/tmf-realm.json. Tokens carry the issuer ${KEYCLOAK_PUBLIC_URL}/realms/tmf (KC_HOSTNAME) whichever
   # way the caller reached Keycloak; the app fetches the signing keys from the internal address (OAUTH2_JWKS_URL).
   keycloak:
     profiles: ["keycloak"]
@@ -79,13 +79,13 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-      KC_HOSTNAME: http://localhost:8180
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://localhost:${KEYCLOAK_PORT:-8180}}
       KC_HEALTH_ENABLED: "true"
       JAVA_OPTS_APPEND: "-XX:UseSVE=0"  # JDK 21 crashes with SIGILL on some arm64 hosts (SVE)
     volumes:
       - ./keycloak/tmf-realm.json:/opt/keycloak/data/import/tmf-realm.json:ro
     ports:
-      - "8180:8080"
+      - "${KEYCLOAK_PORT:-8180}:8080"
     healthcheck:
       # the image has no curl: speak HTTP to the management port by hand
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]

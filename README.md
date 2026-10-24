@@ -50,6 +50,8 @@ Requirements for an external database:
 
 The entrypoint waits for the database (`scripts/wait_for_db.py`) and runs `alembic upgrade head`.
 API: http://127.0.0.1:8080/service, OpenAPI UI: http://127.0.0.1:8080/docs
+The ports published on the host can be changed with `APP_PORT` (8080), `POSTGRES_PORT` (5432), `ORACLE_PORT` (1521) and
+`KEYCLOAK_PORT` (8180), e.g. in `.env`; the connections between the containers keep using the internal ports.
 Health: `/livez` (process is up) and `/readyz` (database reachable and migrated, else 503); the compose healthcheck of `app` uses `/readyz`. Both are outside the TMF638 spec and not in the OpenAPI document.
 
 Locally without a container (databases from compose on ports 5432/1521, or any other host in the URL):
@@ -195,8 +197,8 @@ OAUTH2_JWKS_URL=http://keycloak:8080/realms/tmf/protocol/openid-connect/certs \
 docker compose up -d app
 ```
 
-Two addresses, one provider: the token names the issuer by the URL the token was requested at, and Keycloak is told to
-use `http://localhost:8180` (`KC_HOSTNAME`) whichever way it is reached. So the app compares `iss` with that public
+Two addresses, one provider: the token names an issuer URL, and Keycloak is told to
+use `KEYCLOAK_PUBLIC_URL` (default `http://localhost:8180`, passed as `KC_HOSTNAME`) whichever way it is reached. So the app compares `iss` with that public
 URL (`OAUTH2_ISSUER`) but fetches the keys over the compose network (`OAUTH2_JWKS_URL`).
 
 ```bash
@@ -210,6 +212,34 @@ jq -R 'split(".")[1] | @base64d | fromjson' <<< "$TOKEN"                        
 Keycloak runs in development mode here (H2 database, HTTP): for trying things out, not for production. The JVM
 option `-XX:UseSVE=0` in the compose file works around a JDK 21 crash (SIGILL) on some arm64 hosts. Other providers
 work the same way: set the issuer, the JWKS URL and the claim that carries the roles.
+
+### Calling the API from outside (another machine, an external Bruno)
+
+The API only validates tokens, it does not care who fetched them. What has to fit is the **issuer**: a Keycloak
+without a fixed hostname writes into `iss` the URL the token was requested at; here `KC_HOSTNAME` pins it to
+`KEYCLOAK_PUBLIC_URL`, whichever address the client used to reach Keycloak, and the API compares it with
+`OAUTH2_ISSUER`, which therefore has to be `KEYCLOAK_PUBLIC_URL` + `/realms/tmf`. The client still has to be able to
+reach Keycloak (the token endpoint) at some address.
+
+* **Bruno on your own machine, stack in the devcontainer:** VS Code forwards the ports under the same numbers, so
+  `localhost:8080` and `localhost:8180` work and the environment `compose-oauth2` needs no change (not to be taken
+  for granted with other port settings).
+* **Stack on a server, clients in the network:**
+  ```bash
+  KEYCLOAK_PUBLIC_URL=http://myhost:8180 AUTH_MODE=oauth2 OAUTH2_ISSUER=http://myhost:8180/realms/tmf \
+  OAUTH2_JWKS_URL=http://keycloak:8080/realms/tmf/protocol/openid-connect/certs \
+  docker compose --profile keycloak up -d --force-recreate keycloak app
+  ```
+  In Bruno set `tmfc008_base_url` and `token_url` to `myhost`. (`OAUTH2_JWKS_URL` stays internal.)
+* **Another provider** (Entra ID, Auth0, a central Keycloak): set `OAUTH2_ISSUER`, `OAUTH2_JWKS_URL` (or leave it to
+  discovery), `OAUTH2_AUDIENCE` and, where the roles are in another claim, `OAUTH2_ROLES_CLAIM` / `OAUTH2_ROLE_READ` /
+  `OAUTH2_ROLE_WRITE`; no `keycloak` profile needed.
+* **Events** are posted by the API to the callback of a subscription: an external listener must be reachable from the
+  API container, and `callback_url` in Bruno has to name that address.
+
+Not for the open internet as it stands: Keycloak runs in development mode over HTTP (put a TLS proxy in front, both
+for it and for the API), the realm has fixed demo secrets and users, and the admin console uses `admin` / `admin`.
+Change those first. The published ports are bound to all interfaces of the host.
 
 **Tests:** the pytest suite and the Bruno collection run in each mode. pytest takes credentials from the environment
 (`TMF_WRITER_BASIC=user:password`, `TMF_READER_BASIC=...`, or `TMF_TOKEN_URL` with `TMF_WRITER_CLIENT=id:secret` /
