@@ -18,6 +18,10 @@ A condition through a service reference (see references.py) becomes
 
 so both the referenced documents (t) and the referencing ones (s, by the id
 of t) are found via index.
+
+Sorting (render_sort) orders by every sort attribute twice: JSON numbers
+numerically, then the value as text in byte order - the same order on both
+backends (Oracle's JSON_VALUE alone would compare numbers as text).
 """
 
 import json
@@ -26,6 +30,7 @@ from typing import Callable, Dict, List, Tuple
 from sqlalchemy import TextClause, text
 
 from .ast import And, AnyElement, Compare, Exists, Filter, Key, Not, Or, Path, Predicate, Ref, Scalar, Var
+from .parser import SortKey
 from .references import REF_ID_VAR, REFERENCES, embedded_variant, join_variant, single_ref
 
 
@@ -160,6 +165,31 @@ def render_condition(path: Path, dialect: str, index: int, column: str = "payloa
 
 def needs_join(paths: List[Path]) -> bool:
     return any(single_ref(p) is not None for p in paths)
+
+
+def _sort_expressions(sort_key: SortKey, dialect: str, column: str) -> List[str]:
+    # keys are validated against KEY_RE, so they can't break out of the literal
+    if dialect == "postgresql":
+        pg_path = "'{" + ",".join(f'"{k}"' for k in sort_key.keys) + "}'"
+        value_type = f"jsonb_typeof({column} #> {pg_path})"
+        number = f"CASE WHEN {value_type} = 'number' THEN ({column} #>> {pg_path})::numeric END"
+        scalar = f"CASE WHEN {value_type} IN ('string', 'number', 'boolean') THEN {column} #>> {pg_path} END"
+        return [number, f'({scalar}) COLLATE "C"']
+    if dialect == "oracle":
+        # lax mode steps into arrays, PostgreSQL's #> doesn't: sorting through arrays is undefined
+        json_path = "$" + "".join(f'."{k}"' for k in sort_key.keys)
+        number = f"JSON_VALUE({column}, '{json_path} ? (@.type() == \"number\")' RETURNING NUMBER NULL ON ERROR)"
+        return [number, f"NLSSORT(JSON_VALUE({column}, '{json_path}' RETURNING VARCHAR2(4000) NULL ON ERROR), 'NLS_SORT=BINARY')"]
+    raise ValueError(f"Unsupported database dialect: {dialect}")
+
+
+def render_sort(sort_keys: List[SortKey], dialect: str, column: str = "service.payload") -> List[TextClause]:
+    """ORDER BY items for `sort`; values missing (or not scalar) sort last in both directions."""
+    clauses = []
+    for sort_key in sort_keys:
+        direction = "DESC" if sort_key.descending else "ASC"
+        clauses += [text(f"{expr} {direction} NULLS LAST") for expr in _sort_expressions(sort_key, dialect, column)]
+    return clauses
 
 
 def render_conditions(paths: List[Path], dialect: str) -> List[TextClause]:

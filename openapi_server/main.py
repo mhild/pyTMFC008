@@ -16,8 +16,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from openapi_server.apis.events_subscription_api import router as EventsSubscriptionApiRouter
-from openapi_server.apis.notification_listener_api import router as NotificationListenerApiRouter
 from openapi_server.apis.service_api import router as ServiceApiRouter
+from openapi_server.services.validation import warm_up
 
 app = FastAPI(
     title="Service Inventory Management",
@@ -26,8 +26,8 @@ app = FastAPI(
 )
 
 app.include_router(EventsSubscriptionApiRouter)
-app.include_router(NotificationListenerApiRouter)
 app.include_router(ServiceApiRouter)
+warm_up()  # load the JSON schemas from the spec now, not on the first request
 
 
 @app.exception_handler(HTTPException)

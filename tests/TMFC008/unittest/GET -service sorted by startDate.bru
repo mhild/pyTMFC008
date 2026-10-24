@@ -1,0 +1,26 @@
+meta {
+  name: GET /service?sort=-startDate,name
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Cloud&sort=-startDate,name&fields=startDate,name
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Cloud
+  sort: -startDate,name
+  fields: startDate,name
+}
+
+assert {
+  res.status: in [200, 206]
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

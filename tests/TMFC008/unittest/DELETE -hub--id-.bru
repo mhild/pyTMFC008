@@ -1,0 +1,20 @@
+meta {
+  name: DELETE /hub/<id>
+  type: http
+  seq: 14
+}
+
+delete {
+  url: {{tmfc008_base_url}}/hub/{{HUB_ID}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 204
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

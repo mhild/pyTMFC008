@@ -1,76 +1,75 @@
 # coding: utf-8
 
-from typing import Dict, List  # noqa: F401
-import importlib
-import pkgutil
+import uuid
+from typing import Any, Dict
 
-from openapi_server.apis.events_subscription_api_base import BaseEventsSubscriptionApi
-import openapi_server.impl
+from fastapi import APIRouter, Body, Depends, Request, Response
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi import (  # noqa: F401
-    APIRouter,
-    Body,
-    Cookie,
-    Depends,
-    Form,
-    Header,
-    HTTPException,
-    Path,
-    Query,
-    Response,
-    Security,
-    status,
-)
-
-from openapi_server.models.extra_models import TokenModel  # noqa: F401
-from pydantic import Field, StrictStr
-from typing import Any
-from typing_extensions import Annotated
+from openapi_server.database.models import Hub as HubRow
+from openapi_server.database.session import get_db_session
 from openapi_server.models.error import Error
 from openapi_server.models.hub import Hub
-from openapi_server.models.hub_fvo import HubFVO
-
+from openapi_server.services.events import validate_hub
+from openapi_server.services.service import load
 
 router = APIRouter()
 
-ns_pkg = openapi_server.impl
-for _, name, _ in pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + "."):
-    importlib.import_module(name)
+HUB_ERRORS = {
+    400: {"model": Error, "description": "Bad Request"},
+    404: {"model": Error, "description": "Not Found"},
+    500: {"model": Error, "description": "Internal Server Error"},
+}
 
 
 @router.post(
     "/hub",
-    responses={
-        201: {"model": Hub, "description": "Notified"},
-        "default": {"model": Error, "description": "Error"},
-    },
+    responses={201: {"model": Hub, "description": "Notified"}, **HUB_ERRORS},
     tags=["events subscription"],
     summary="Create a subscription (hub) to receive Events",
-    response_model_by_alias=True,
+    status_code=201,
 )
 async def create_hub(
-    hub_fvo: Annotated[HubFVO, Field(description="Data containing the callback endpoint to deliver the information")] = Body(None, description="Data containing the callback endpoint to deliver the information"),
-) -> Hub:
+    request: Request,
+    response: Response,
+    payload: Dict = Body(..., description="Data containing the callback endpoint to deliver the information"),
+    session: AsyncSession = Depends(get_db_session),
+) -> Dict[str, Any]:
     """Sets the communication endpoint to receive Events."""
-    if not BaseEventsSubscriptionApi.subclasses:
-        raise HTTPException(status_code=500, detail="Not implemented")
-    return await BaseEventsSubscriptionApi.subclasses[0]().create_hub(hub_fvo)
+    validate_hub(payload)
+    hub_id = uuid.uuid4()
+    hub = {
+        "id": str(hub_id),
+        "href": f"{str(request.url).rstrip('/')}/{hub_id}",
+        "@type": payload.get("@type", "Hub"),
+        "callback": payload["callback"],
+    }
+    if payload.get("query"):
+        hub["query"] = payload["query"]
+    session.add(HubRow(id=hub_id, payload=hub))
+    await session.commit()
+    response.headers["Location"] = hub["href"]
+    return hub
+
+
+@router.get(
+    "/hub/{id}",
+    responses={200: {"model": Hub, "description": "Success"}, **HUB_ERRORS},
+    tags=["events subscription"],
+    summary="Retrieves a subscription (hub)",
+)
+async def get_hub(id: str, session: AsyncSession = Depends(get_db_session)) -> Dict[str, Any]:
+    return (await load(session, HubRow, id)).payload
 
 
 @router.delete(
     "/hub/{id}",
-    responses={
-        204: {"description": "Deleted"},
-        "default": {"model": Error, "description": "Error"},
-    },
+    responses={204: {"description": "Deleted"}, **HUB_ERRORS},
     tags=["events subscription"],
     summary="Remove a subscription (hub) to receive Events",
-    response_model_by_alias=True,
+    status_code=204,
 )
-async def hub_delete(
-    id: Annotated[StrictStr, Field(description="Identifier of the Resource")] = Path(..., description="Identifier of the Resource"),
-) -> None:
-    """"""
-    if not BaseEventsSubscriptionApi.subclasses:
-        raise HTTPException(status_code=500, detail="Not implemented")
-    return await BaseEventsSubscriptionApi.subclasses[0]().hub_delete(id)
+async def hub_delete(id: str, session: AsyncSession = Depends(get_db_session)):
+    await session.delete(await load(session, HubRow, id))
+    await session.commit()
+    return Response(status_code=204)

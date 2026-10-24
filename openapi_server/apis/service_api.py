@@ -9,6 +9,7 @@ import openapi_server.impl
 
 from fastapi import (  # noqa: F401
     APIRouter,
+    BackgroundTasks,
     Body,
     Cookie,
     Depends,
@@ -34,6 +35,7 @@ from openapi_server.models.service_mvo import ServiceMVO
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from openapi_server.services import events
 from openapi_server.services.service import (
     create_service,
     delete_service,
@@ -80,11 +82,13 @@ FIELDS_QUERY = Query(None, description="Comma-separated properties to be provide
 async def post_service(
     request: Request,
     response: Response,
+    background_tasks: BackgroundTasks,
     payload: Dict = Body(...),
     fields: Optional[str] = FIELDS_QUERY,
     db_session: AsyncSession = Depends(get_db_session),
 ):
     service = await create_service(payload, db_session, base_url=str(request.url.remove_query_params("fields")))
+    await events.publish([events.build_event(events.CREATE, service)], db_session, background_tasks)
     response.headers["Location"] = service["href"]
     return project(service, parse_fields(fields))
 
@@ -110,9 +114,11 @@ async def post_service(
 )
 async def delete_service_endpoint(
     service_id: str,
+    background_tasks: BackgroundTasks,
     db_session: AsyncSession = Depends(get_db_session),
 ):
-    await delete_service(service_id, db_session)
+    service = await delete_service(service_id, db_session)
+    await events.publish([events.build_event(events.DELETE, service)], db_session, background_tasks)
     return Response(status_code=204)
 
 @router.get(
@@ -138,6 +144,9 @@ async def get_services(
     fields: Optional[str] = FIELDS_QUERY,
     offset: int = Query(0, ge=0, description="Requested index for start of resources to be provided in response"),
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="Requested number of resources to be provided in response"),
+    sort: Optional[str] = Query(
+        None, description="Comma-separated attributes to sort by, '-' for descending, e.g. -startDate,name (TMF630)"
+    ),
     filter: Optional[str] = Query(
         None,
         description="JSONPath filter (TMF630), e.g. $.serviceCharacteristic[?(@.name=='mac' && @.value=='00:11:22:33:44:55')]. "
@@ -175,6 +184,7 @@ async def get_services(
 async def patch_service(
     service_id: str,
     request: Request,
+    background_tasks: BackgroundTasks,
     fields: Optional[str] = FIELDS_QUERY,
     session: AsyncSession = Depends(get_db_session),
 ) -> Dict[str, Any]:
@@ -183,7 +193,8 @@ async def patch_service(
         patch_body = await request.json()
     except ValueError:
         raise HTTPException(status_code=400, detail="Request body is not valid JSON")
-    service = await patch_service_doc(service_id, content_type, patch_body, session)
+    old, service = await patch_service_doc(service_id, content_type, patch_body, session)
+    await events.publish(events.change_events(old, service), session, background_tasks)
     return project(service, parse_fields(fields))
 
 @router.get(

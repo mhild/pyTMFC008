@@ -4,6 +4,7 @@
                         ?relatedParty.partyOrPartyRole.name=Peter Meyer
                         ?startDate.gte=2024-01-01   (also: startDate>=2024-01-01)
 * JSONPath filtering:   ?filter=$.serviceCharacteristic[?(@.name=='mac' && @.value=='00:11:22:33:44:55')]
+* Sorting:              ?sort=-startDate,name
 
 Both produce `Path`s (see ast.py). Every object key is validated against KEY_RE,
 so nothing user-supplied but validated identifiers ends up in the path text;
@@ -299,3 +300,27 @@ def parse_query_params(params: Iterable[Tuple[str, str]]) -> List[Path]:
             attributes.append((name, value))
     conditions += parse_attribute_filters(attributes)
     return [resolve_references(c) for c in conditions]
+
+
+# --------------------------------------------------------------------------- #
+# Sorting
+# --------------------------------------------------------------------------- #
+
+@dataclass(frozen=True)
+class SortKey:
+    keys: Tuple[str, ...]  # validated object keys, e.g. ("relatedParty", "role")
+    descending: bool = False
+
+
+def parse_sort(values: Iterable[str]) -> List[SortKey]:
+    """sort=-startDate,name (TMF630): comma-separated attributes, "-" descending, "+" or none ascending."""
+    sort_keys: List[SortKey] = []
+    for value in values:
+        for item in value.split(","):
+            item = item.strip()
+            descending = item.startswith("-")
+            name = item[1:] if item[:1] in "+-" else item
+            if not name:
+                raise FilterError(f"Invalid sort attribute: {item!r}")
+            sort_keys.append(SortKey(tuple(_key(part).name for part in name.split(".")), descending))
+    return sort_keys

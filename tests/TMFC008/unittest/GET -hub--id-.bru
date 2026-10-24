@@ -1,0 +1,20 @@
+meta {
+  name: GET /hub/<id>
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{tmfc008_base_url}}/hub/{{HUB_ID}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

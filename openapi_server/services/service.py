@@ -1,15 +1,16 @@
 import uuid
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type
 
 import jsonpatch
 from fastapi import HTTPException
 from sqlalchemy import Select, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from openapi_server.database.models import Service
+from openapi_server.database.models import Base, Service
 from openapi_server.services.merge_patch import apply_merge_patch
-from openapi_server.services.query.parser import FilterError, parse_query_params
-from openapi_server.services.query.render import needs_join, render_conditions
+from openapi_server.services.query.parser import FilterError, parse_query_params, parse_sort
+from openapi_server.services.query.render import needs_join, render_conditions, render_sort
+from openapi_server.services.validation import first_error
 
 # Always returned, even when `fields` selects other attributes (TMF630)
 MANDATORY_FIELDS = ("id", "href", "@type")
@@ -27,28 +28,39 @@ def project(doc: Dict[str, Any], field_set: Optional[Set[str]]) -> Dict[str, Any
     return {k: v for k, v in doc.items() if k in field_set or k in MANDATORY_FIELDS}
 
 
-def _parse_id(service_id: str) -> uuid.UUID:
+async def load(session: AsyncSession, model: Type[Base], resource_id: str, for_update: bool = False) -> Base:
+    """Row of `model` with this id; 404 also for ids that can't exist (ids are UUIDs)."""
     try:
-        return uuid.UUID(service_id)
+        parsed_id = uuid.UUID(resource_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid service_id format")
+        parsed_id = None
+    row = None
+    if parsed_id is not None:
+        stmt = select(model).where(model.id == parsed_id)
+        if for_update:
+            stmt = stmt.with_for_update()
+        row = (await session.execute(stmt)).scalar()
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"{model.__name__} not found")
+    return row
+
+
+def validate(document: Any, schema_name: str) -> None:
+    error = first_error(document, schema_name)
+    if error:
+        raise HTTPException(status_code=400, detail=f"Invalid {schema_name}: {error}")
 
 
 async def _load(session: AsyncSession, service_id: str, for_update: bool = False) -> Service:
-    stmt = select(Service).where(Service.id == _parse_id(service_id))
-    if for_update:
-        stmt = stmt.with_for_update()
-    db_service = (await session.execute(stmt)).scalar()
-    if not db_service:
-        raise HTTPException(status_code=404, detail="Service not found")
-    return db_service
+    return await load(session, Service, service_id, for_update)
 
 
 async def create_service(payload: Dict, session: AsyncSession, base_url: str) -> Dict:
+    payload.setdefault("@type", "Service")
+    validate(payload, "Service_FVO")
     service_id = uuid.uuid4()
     payload["id"] = str(service_id)
     payload["href"] = f"{base_url.rstrip('/')}/{service_id}"
-    payload.setdefault("@type", "Service")
     session.add(Service(id=service_id, payload=payload))
     await session.commit()
     return payload
@@ -62,16 +74,18 @@ def list_statements(
     query_params: Iterable[Tuple[str, str]], dialect: str, offset: int, limit: int
 ) -> Tuple[Select, Select, bool]:
     """(count statement, page statement, joins other services?) for a list request; raises FilterError."""
+    query_params = list(query_params)
     paths = parse_query_params(query_params)
+    order_by = render_sort(parse_sort(v for k, v in query_params if k == "sort"), dialect) + [Service.id]
     conditions = render_conditions(paths, dialect)
     count_stmt = select(func.count()).select_from(Service).where(*conditions)
     # Deferred join: sort and skip only the (indexed) ids, then load the documents
     # of the requested page - instead of sorting whole documents for deep offsets.
-    page_ids = select(Service.id).where(*conditions).order_by(Service.id).offset(offset).limit(limit).subquery("page")
+    page_ids = select(Service.id).where(*conditions).order_by(*order_by).offset(offset).limit(limit).subquery("page")
     page_stmt = (
         select(Service.payload)
         .join(page_ids, Service.id == page_ids.c.id)
-        .order_by(Service.id)
+        .order_by(*order_by)
         # Oracle can't estimate the page size (bind variables) and would full-scan for the join
         .prefix_with("/*+ NO_MERGE(page) LEADING(page) USE_NL(service) INDEX(service) */", dialect="oracle")
     )
@@ -104,7 +118,10 @@ async def list_services(
     return list(rows), total
 
 
-async def patch_service(service_id: str, content_type: str, patch_body: Any, session: AsyncSession) -> Dict:
+async def patch_service(
+    service_id: str, content_type: str, patch_body: Any, session: AsyncSession
+) -> Tuple[Dict, Dict]:
+    """(document before, document after) the patch."""
     db_service = await _load(session, service_id, for_update=True)  # row lock: no lost updates
     current = db_service.payload
 
@@ -127,11 +144,15 @@ async def patch_service(service_id: str, content_type: str, patch_body: Any, ses
 
     # id and href are owned by the server
     new_doc["id"], new_doc["href"] = current["id"], current.get("href")
+    validate(new_doc, "Service")
     db_service.payload = new_doc
     await session.commit()
-    return new_doc
+    return current, new_doc
 
 
-async def delete_service(service_id: str, session: AsyncSession) -> None:
-    await session.delete(await _load(session, service_id))
+async def delete_service(service_id: str, session: AsyncSession) -> Dict:
+    """Deletes the service and returns its last document."""
+    db_service = await _load(session, service_id)
+    await session.delete(db_service)
     await session.commit()
+    return db_service.payload

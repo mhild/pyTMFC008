@@ -3,10 +3,14 @@
 Every run uses a unique marker so the tests also work on a pre-filled database.
 """
 import uuid
+from pathlib import Path
 
 import pytest
+import yaml
 
 MERGE = {"Content-Type": "application/merge-patch+json"}
+SPEC_FILE = Path(__file__).resolve().parents[2] / "api_specs" / "TMF638-Service_Inventory_Management-v5.0.0.oas.yaml"
+SPEC_REF = {"id": "vcpe-spec-1", "name": "vCPE", "@type": "ServiceSpecificationRef"}
 JSON_PATCH = {"Content-Type": "application/json-patch+json"}
 
 
@@ -22,12 +26,13 @@ def make_service(run_id, mac, party="Peter Meyer", state="active", **extra):
         "name": f"vCPE {mac}",
         "state": state,
         "startDate": "2024-05-01T00:00:00Z",
+        "serviceSpecification": SPEC_REF,
         "serviceCharacteristic": [
             {"name": "vlan", "valueType": "integer", "value": 300, "@type": "IntegerCharacteristic"},
             {"name": "mac", "valueType": "string", "value": mac, "@type": "StringCharacteristic"},
         ],
         "relatedParty": [
-            {"role": "user", "partyOrPartyRole": {"name": party, "@type": "PartyRef"}, "@type": "RelatedPartyRefOrPartyRoleRef"}
+            {"role": "user", "partyOrPartyRole": {"id": f"party-{party}", "name": party, "@type": "PartyRef"}, "@type": "RelatedPartyRefOrPartyRoleRef"}
         ],
         **extra,
     }
@@ -76,7 +81,7 @@ def test_retrieve_with_fields(client, services):
 def test_retrieve_unknown_and_invalid_id(client):
     assert client.get(f"/service/{uuid.uuid4()}").status_code == 404
     r = client.get("/service/not-a-uuid")
-    assert r.status_code == 400
+    assert r.status_code == 404
     assert r.json()["@type"] == "Error"
 
 
@@ -190,3 +195,88 @@ def test_delete(client, run_id):
     assert r.status_code == 204
     assert client.get(f"/service/{created['id']}").status_code == 404
     assert client.delete(f"/service/{created['id']}").status_code == 404
+
+
+# --------------------------------------------------------------------------- #
+# Validation against the TMF638 schemas
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.parametrize(
+    "change, error_path",
+    [
+        ({"state": "running"}, "$.state"),
+        ({"startDate": "2024-05-01"}, "$.startDate"),  # date-time required
+        ({"isStateful": "yes"}, "$.isStateful"),
+        ({"serviceSpecification": None}, "'serviceSpecification' is a required property"),
+        ({"relatedParty": [{"role": "user", "partyOrPartyRole": {"name": "x", "@type": "PartyRef"},
+                            "@type": "RelatedPartyRefOrPartyRoleRef"}]}, "$.relatedParty[0].partyOrPartyRole"),
+    ],
+)
+def test_create_rejects_invalid_service(client, run_id, change, error_path):
+    doc = {**make_service(run_id, "ff:ff"), **change}
+    doc = {k: v for k, v in doc.items() if v is not None}
+    r = client.post("/service", json=doc)
+    assert r.status_code == 400, r.text
+    assert error_path in r.json()["reason"]
+
+
+def test_create_accepts_spec_example(client):
+    with open(SPEC_FILE, encoding="utf-8") as f:
+        example = yaml.safe_load(f)["components"]["examples"]["Create_Service_request"]["value"]
+    # Oracle can't store object-valued characteristics (multivalue index on serviceCharacteristic.value, see README)
+    example["serviceCharacteristic"] = [c for c in example["serviceCharacteristic"] if c["@type"] != "ObjectCharacteristic"]
+    r = client.post("/service", json=example)
+    assert r.status_code == 201, r.text
+    client.delete(f"/service/{r.json()['id']}")
+
+
+def test_patch_must_keep_the_service_valid(client, services):
+    s = services[1]
+    before = client.get(f"/service/{s['id']}").json()
+    assert client.patch(f"/service/{s['id']}", json={"state": "running"}, headers=MERGE).status_code == 400
+    assert client.patch(f"/service/{s['id']}", json={"@type": None}, headers=MERGE).status_code == 400
+    assert client.get(f"/service/{s['id']}").json() == before
+
+
+# --------------------------------------------------------------------------- #
+# Sorting
+# --------------------------------------------------------------------------- #
+
+@pytest.fixture(scope="module")
+def sortable(client, run_id):
+    """priority 9/10/100 checks numeric order (as text, "10" < "100" < "9")."""
+    docs = [
+        make_service(run_id, "s1", serviceType=f"Sort-{run_id}", priority=10, startDate="2024-03-01T00:00:00Z"),
+        make_service(run_id, "s2", serviceType=f"Sort-{run_id}", priority=9, startDate="2024-01-01T00:00:00Z"),
+        make_service(run_id, "s3", serviceType=f"Sort-{run_id}", priority=100, startDate="2024-03-01T00:00:00Z"),
+        make_service(run_id, "s4", serviceType=f"Sort-{run_id}", startDate="2024-02-01T00:00:00Z"),  # no priority
+    ]
+    created = [client.post("/service", json=doc).json() for doc in docs]
+    yield f"Sort-{run_id}"
+    for s in created:
+        client.delete(f"/service/{s['id']}")
+
+
+def sorted_names(client, service_type, sort, **params):
+    r = client.get("/service", params={"serviceType": service_type, "sort": sort, "fields": "name", **params})
+    assert r.status_code in (200, 206), r.text
+    return [s["name"].removeprefix("vCPE ") for s in r.json()]
+
+
+def test_sort_numbers_numerically_missing_values_last(client, sortable):
+    assert sorted_names(client, sortable, "priority") == ["s2", "s1", "s3", "s4"]
+    assert sorted_names(client, sortable, "-priority") == ["s3", "s1", "s2", "s4"]
+
+
+def test_sort_by_several_attributes(client, sortable):
+    assert sorted_names(client, sortable, "-startDate,name") == ["s1", "s3", "s4", "s2"]
+    assert sorted_names(client, sortable, "-startDate,-name") == ["s3", "s1", "s4", "s2"]
+
+
+def test_sort_with_pagination(client, sortable):
+    assert sorted_names(client, sortable, "startDate,name", offset=1, limit=2) == ["s4", "s1"]
+
+
+@pytest.mark.parametrize("sort", ["na'me", "a..b", "-", ""])
+def test_invalid_sort_is_bad_request(client, sort):
+    assert client.get("/service", params={"sort": sort}).status_code == 400

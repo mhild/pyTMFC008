@@ -82,7 +82,7 @@ body:json {
         "role": "user",
         "partyOrPartyRole": {
           "href": "https://mycsp.com:8080/tmf-api/partyManagement/v5/individual/{{user_id}}",
-          "id": {{user_id}},
+          "id": "{{user_id}}",
           "name": "{{user_name}}",
           "@type": "PartyRef",
           "@referredType": "Individual"
@@ -95,7 +95,7 @@ body:json {
         "role": "InstallationAddress",
         "place": {
           "href": "https://mycsp.com:8080/tmf-api/geographicAddressManagement/v5/geographicAddress/{{location_id}}",
-          "id": {{location_id}},
+          "id": "{{location_id}}",
           "name": "{{location_name}}",
           "@type": "PlaceRef",
           "@referredType": "GeographicAddress"

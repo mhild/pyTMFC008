@@ -13,6 +13,7 @@ import uuid
 import pytest
 
 MAC = "00:11:22:33:44:55"
+SPEC_REF = {"id": "rfs-spec-1", "@type": "ServiceSpecificationRef"}
 REF_FILTER = f"$.serviceRelationship[?(@.service.serviceCharacteristic[?(@.name=='mac' && @.value=='{MAC}')])]"
 
 
@@ -34,7 +35,7 @@ def model(client):
     created = []
 
     def post(**doc):
-        r = client.post("/service", json={"@type": "Service", "state": "active", **doc})
+        r = client.post("/service", json={"@type": "Service", "state": "active", "serviceSpecification": SPEC_REF, **doc})
         assert r.status_code == 201, r.text
         created.append(r.json())
         return r.json()
@@ -49,7 +50,8 @@ def model(client):
         "B": b, "D": d, "G": g,
         "A": post(name="A", serviceType=cfs, serviceRelationship=[relationship(ref(b))]),
         "E": post(name="E", serviceType=cfs, serviceRelationship=[relationship(
-            {"@type": "Service", "name": "embedded B", "serviceCharacteristic": [characteristic("mac", MAC)]}, "ReliesOn")]),
+            {"@type": "Service", "name": "embedded B", "state": "designed", "serviceSpecification": SPEC_REF,
+             "serviceCharacteristic": [characteristic("mac", MAC)]}, "ReliesOn")]),
         "C": post(name="C", serviceType=cfs, serviceRelationship=[relationship(ref(d))]),
         "F": post(name="F", serviceType=cfs, serviceRelationship=[relationship(ref(g))]),
         "H": post(name="H", serviceType=cfs, supportingService=[ref(b)]),

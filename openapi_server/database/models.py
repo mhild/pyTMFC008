@@ -62,3 +62,12 @@ class Service(Base):
 
     id = Column(Uuid, primary_key=True)  # uuid on PostgreSQL, CHAR(32) on Oracle
     payload = Column(JsonDocument, nullable=False)
+
+
+class Hub(Base):
+    """Event subscription (TMF630 hub): {"id", "href", "@type", "callback", "query"?}."""
+
+    __tablename__ = "hub"
+
+    id = Column(Uuid, primary_key=True)
+    payload = Column(JsonDocument, nullable=False)

@@ -1,9 +1,9 @@
 """Unit tests for the TMF630 filter parser and SQL/JSON path renderers (no DB needed)."""
 import pytest
 
-from openapi_server.services.query.parser import FilterError, parse_query_params
+from openapi_server.services.query.parser import FilterError, SortKey, parse_query_params, parse_sort
 from openapi_server.services.query.references import embedded_variant, join_variant, single_ref
-from openapi_server.services.query.render import oracle_json_path, pg_jsonpath, render_condition
+from openapi_server.services.query.render import oracle_json_path, pg_jsonpath, render_condition, render_sort
 
 MAC_FILTER = "$.serviceCharacteristic[?(@.name=='mac' && @.value=='00:11:22:33:44:55')]"
 
@@ -186,3 +186,49 @@ def test_join_only_when_dereferencing(params, joins):
 def test_nested_references_are_rejected():
     with pytest.raises(FilterError):
         parse_query_params([("serviceRelationship.service.supportingService.name", "x")])
+
+
+@pytest.mark.parametrize(
+    "values, expected",
+    [
+        (["name"], [SortKey(("name",))]),
+        (["-startDate,+name"], [SortKey(("startDate",), True), SortKey(("name",))]),
+        ([" name"], [SortKey(("name",))]),  # "+name" arrives URL-decoded as " name"
+        (["relatedParty.role", "-@type"], [SortKey(("relatedParty", "role")), SortKey(("@type",), True)]),
+    ],
+)
+def test_parse_sort(values, expected):
+    assert parse_sort(values) == expected
+
+
+@pytest.mark.parametrize("value", ["", "-", "a..b", "na'me", "name,", "a[0]"])
+def test_invalid_sort_is_rejected(value):
+    with pytest.raises(FilterError):
+        parse_sort([value])
+
+
+@pytest.mark.parametrize(
+    "dialect, expected",
+    [
+        (
+            "postgresql",
+            [
+                "CASE WHEN jsonb_typeof(service.payload #> '{\"a\",\"b\"}') = 'number' "
+                "THEN (service.payload #>> '{\"a\",\"b\"}')::numeric END DESC NULLS LAST",
+                "(CASE WHEN jsonb_typeof(service.payload #> '{\"a\",\"b\"}') IN ('string', 'number', 'boolean') "
+                "THEN service.payload #>> '{\"a\",\"b\"}' END) COLLATE \"C\" DESC NULLS LAST",
+            ],
+        ),
+        (
+            "oracle",
+            [
+                "JSON_VALUE(service.payload, '$.\"a\".\"b\" ? (@.type() == \"number\")' RETURNING NUMBER NULL ON ERROR) "
+                "DESC NULLS LAST",
+                "NLSSORT(JSON_VALUE(service.payload, '$.\"a\".\"b\"' RETURNING VARCHAR2(4000) NULL ON ERROR), "
+                "'NLS_SORT=BINARY') DESC NULLS LAST",
+            ],
+        ),
+    ],
+)
+def test_render_sort(dialect, expected):
+    assert [c.text for c in render_sort([SortKey(("a", "b"), True)], dialect)] == expected

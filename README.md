@@ -55,6 +55,7 @@ DATABASE_URL=postgresql+asyncpg://app:secret@localhost:5432/app_db uvicorn opena
 | Operators | `?startDate.gte=2024-01-01`, `?startDate>=2024-01-01`, `.gt .lt .lte .ne` |
 | JSONPath | `?filter=$.serviceCharacteristic[?(@.name=='mac' && @.value=='00:11:22:33:44:55')]` |
 | Projection | `?fields=name,state` (`id`, `href`, `@type` are always included) |
+| Sorting | `?sort=-startDate,name` (`-` descending, `+` or nothing ascending; dotted paths allowed) |
 | Pagination | `?offset=200&limit=100` (default 100, max. 1000); headers `X-Total-Count`, `X-Result-Count`; `206` for partial results |
 
 JSONPath supports `.a`, `['a']`, `[*]`, `[?( … )]` with `== != < <= > >=`, `&&`, `||`, `!`,
@@ -63,6 +64,15 @@ Filters inside an array are evaluated **per element** (`name` and `value` must b
 The same applies to attribute filters: parameters sharing a path prefix are combined into one per-element filter
 (`$.serviceCharacteristic[*] ? (@.name == "mac" && @.value == "…")`). Repeating the *same* parameter
 (`serviceCharacteristic.name=mac&serviceCharacteristic.name=vlan`) is a separate condition: both elements must exist.
+
+### Sorting
+
+Each sort attribute orders JSON numbers numerically first, then all scalar values as text in byte order
+(ISO dates therefore sort chronologically). Missing and non-scalar values come last in both directions; the
+service id breaks ties, so pagination is stable. Both backends return the same order. Sorting through arrays
+(`sort=serviceCharacteristic.value`) is undefined. Sorting is not index-backed: all matches are sorted
+(unfiltered over 50,000 services: ~35 ms on PostgreSQL, ~120 ms on Oracle) – fine for filtered queries, slow on
+large unfiltered sets.
 
 ### Searching through relationships
 
@@ -94,6 +104,35 @@ Invalid filters → `400` in the TMF `Error` format.
 
 Code: `openapi_server/services/query/` (`parser.py` → AST → `references.py` → `render.py`), statement construction in `openapi_server/services/service.py`.
 
+## Validation
+
+`POST` validates the body against `Service_FVO`, `PATCH` validates the *patched document* against `Service`, both
+taken from the OpenAPI spec in `api_specs/` (`openapi_server/services/validation.py`). Invalid documents are rejected
+with `400`, e.g. `Invalid Service_FVO: $.state: 'running' is not one of [...]`. This covers required attributes
+(`state` and `serviceSpecification` on create, `@type` always), enums, types and `date-time` formats. If `@type` is
+missing on create it defaults to `Service`. The spec's `oneOf` + `discriminator` constructs are checked by `@type`
+(e.g. `partyOrPartyRole` must be a `PartyRef` or `PartyRoleRef` with the attributes required for it).
+
+PATCH supports `application/merge-patch+json` (also `application/json`) and `application/json-patch+json`;
+`application/json-patch-query+json` is not supported (`415`). Invalid or unknown ids return `404`.
+
+## Events
+
+Clients subscribe with `POST /hub` (`{"callback": "http://client/api", "query": "..."}`, `GET`/`DELETE /hub/{id}`).
+After a change is committed, the API sends the events to `<callback>/listener/<eventType>`, e.g.
+`http://client/api/listener/serviceStateChangeEvent`:
+
+| Operation | Events |
+|---|---|
+| `POST /service` | `ServiceCreateEvent` |
+| `PATCH /service/{id}` | `ServiceStateChangeEvent` if `state` changed, `ServiceOperatingStatusChangeEvent` if `operatingStatus` changed, `ServiceAttributeValueChangeEvent` if any other attribute changed |
+| `DELETE /service/{id}` | `ServiceDeleteEvent` with the last state of the service |
+
+The optional `query` selects events: `eventType=ServiceStateChangeEvent,ServiceDeleteEvent&event.service.state=active`
+(all terms must match, comma = OR, dotted paths into the event, arrays are searched element-wise).
+Delivery is best effort: one attempt per hub after the response, failures are logged (code: `openapi_server/services/events.py`).
+A production setup would need a transactional outbox with retries so no event is lost on a crash or an unreachable listener.
+
 ## Tests
 
 ```bash
@@ -102,6 +141,10 @@ pip install -r requirements-dev.txt                 # app requirements + pytest
 pytest tests/pytest/test_query.py                          # parser/renderer, no database
 TMF_BASE_URL=http://127.0.0.1:8080 pytest tests/pytest     # + integration tests against the running API
 ```
+
+`tests/pytest/test_events.py` starts an HTTP listener the API has to call back. It registers its callback under
+`TMF_CALLBACK_HOST` (default `127.0.0.1`, i.e. the API runs on the host); for the API in the Docker container use
+`TMF_CALLBACK_HOST=host.docker.internal` (Linux: add `extra_hosts: ["host.docker.internal:host-gateway"]` to the `app` service).
 
 The integration tests are backend-neutral and run unchanged against both databases.
 
@@ -183,3 +226,7 @@ Notes:
 
 * `cryptography` is pinned to 46.0.3: version 50.0.2 (a dependency of `oracledb`) aborted with *Illegal instruction* on the arm64 host.
 * The Oracle image `23-slim` contains no Oracle Text (no `SEARCH INDEX`), but is considerably smaller than the full image.
+* **Known limitation (Oracle):** services with an object-valued characteristic (`ObjectCharacteristic`,
+  `ObjectArrayCharacteristic` with objects) can't be stored – the insert fails with `ORA-40456`, because the multivalue
+  index on `serviceCharacteristic.value` (and the `ix_svc_*_char_value` indexes on embedded services) only accept
+  scalar values and Oracle requires `ERROR ON ERROR` for multivalue indexes. PostgreSQL is not affected.
