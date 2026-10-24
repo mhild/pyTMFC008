@@ -1,27 +1,27 @@
 # Test report
 
-Generated on 2026-10-24 09:05 UTC by `scripts/test_report.py`. To regenerate, see [Reproduce](#reproduce).
+Generated on 2026-10-24 11:07 UTC by `scripts/test_report.py`. To regenerate, see [Reproduce](#reproduce).
 
 ## Result
 
 | Backend | API | Result |
 |---|---|---|
-| PostgreSQL | `http://127.0.0.1:8001` | 106 passed in 4.47s |
-| Oracle | `http://127.0.0.1:8002` | 106 passed in 3.56s |
+| PostgreSQL | `http://127.0.0.1:8001` | 122 passed in 5.26s |
+| Oracle | `http://127.0.0.1:8003` | 122 passed in 52.17s |
 
 ## Test environment
 
 | | |
 |---|---|
-| Code version | `main` @ `d9651af` |
+| Code version | `main` @ `540ccfd` |
 | Operating system | Debian GNU/Linux 13 (trixie) (Kernel 6.12.13-200.fc41.aarch64, aarch64) |
 | CPU | Apple (aarch64, model name not exposed to the VM), 4 CPUs |
 | Memory | 7.7 GiB |
 | Python | 3.12.15 (CPython) |
 | Database PostgreSQL | PostgreSQL 16.15 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit – 50,000 services in table |
-| Database Oracle | Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free Version 23.26.3.0.0 – 50,000 services in table |
-| Container | `gvenzl/oracle-free:23-slim` (Up 25 hours (healthy)) |
-| Container | `postgres:16-alpine` (Up 25 hours (healthy)) |
+| Database Oracle | Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free Version 23.26.3.0.0 – 1,000,000 services in table |
+| Container | `gvenzl/oracle-free:23-slim` (Up About an hour (healthy)) |
+| Container | `postgres:16-alpine` (Up About an hour (healthy)) |
 | Packages | fastapi 0.136.0, uvicorn 0.44.0, pydantic 2.13.3, SQLAlchemy 2.0.49, alembic 1.18.4, asyncpg 0.31.0, oracledb 26.0.1, cryptography 46.0.3, httpx 0.28.1, pytest 9.1.1 |
 
 For each test run the API ran as a separate uvicorn instance (one worker) on the same host as the databases (Docker).
@@ -30,8 +30,8 @@ For each test run the API ran as a separate uvicorn instance (one worker) on the
 
 | Level | Tests | What runs |
 |---|---:|---|
-| API | 52 | HTTP request via httpx → FastAPI → SQLAlchemy → database (end-to-end against the running API) |
-| Unit | 54 | parser and SQL renderers only – no API, no database (run once per backend nevertheless) |
+| API | 56 | HTTP request via httpx → FastAPI → SQLAlchemy → database (end-to-end against the running API) |
+| Unit | 66 | parser and SQL renderers only – no API, no database (run once per backend nevertheless) |
 
 ### `test_api.py`
 
@@ -43,40 +43,44 @@ Every run uses a unique marker so the tests also work on a pre-filled database.
 
 | Test | Level | Description | PostgreSQL | Oracle |
 |---|---|---|---|---|
-| `test_create_returns_resource` | API | create returns resource | ✅ passed (39 ms) | ✅ passed (84 ms) |
-| `test_retrieve` | API | retrieve | ✅ passed (2 ms) | ✅ passed (7 ms) |
-| `test_retrieve_with_fields` | API | retrieve with fields | ✅ passed (1 ms) | ✅ passed (2 ms) |
-| `test_retrieve_unknown_and_invalid_id` | API | retrieve unknown and invalid id | ✅ passed (2 ms) | ✅ passed (2 ms) |
-| `test_attribute_filter` | API | attribute filter | ✅ passed (11 ms) | ✅ passed (103 ms) |
-| `test_attribute_filter_dotted_path` | API | attribute filter dotted path | ✅ passed (5 ms) | ✅ passed (12 ms) |
-| `test_attribute_filter_number` | API | attribute filter number | ✅ passed (22 ms) | ✅ passed (13 ms) |
-| `test_attribute_filter_operators` | API | attribute filter operators | ✅ passed (6 ms) | ✅ passed (28 ms) |
-| `test_jsonpath_filter_characteristic` | API | The search the PoC is about: characteristic name AND value in the same array element. | ✅ passed (3 ms) | ✅ passed (11 ms) |
-| `test_jsonpath_filter_does_not_mix_array_elements` | API | jsonpath filter does not mix array elements | ✅ passed (2 ms) | ✅ passed (3 ms) |
-| `test_jsonpath_filter_related_party` | API | jsonpath filter related party | ✅ passed (3 ms) | ✅ passed (9 ms) |
-| `test_quotes_in_values_are_data_not_syntax` | API | quotes in values are data not syntax | ✅ passed (6 ms) | ✅ passed (18 ms) |
-| `test_invalid_filter_is_bad_request` | API | invalid filter is bad request | ✅ passed (2 ms) | ✅ passed (1 ms) |
-| `test_list_fields` | API | list fields | ✅ passed (3 ms) | ✅ passed (3 ms) |
-| `test_pagination` | API | pagination | ✅ passed (102 ms) | ✅ passed (12 ms) |
-| `test_merge_patch` | API | merge patch | ✅ passed (8 ms) | ✅ passed (42 ms) |
-| `test_json_patch` | API | json patch | ✅ passed (5 ms) | ✅ passed (34 ms) |
-| `test_patch_cannot_change_id` | API | patch cannot change id | ✅ passed (4 ms) | ✅ passed (4 ms) |
-| `test_patch_errors` | API | patch errors | ✅ passed (4 ms) | ✅ passed (5 ms) |
-| `test_delete` | API | delete | ✅ passed (11 ms) | ✅ passed (15 ms) |
-| `test_create_rejects_invalid_service[change0-$.state]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_create_rejects_invalid_service[change1-$.startDate]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_create_rejects_invalid_service[change2-$.isStateful]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_create_rejects_invalid_service[change3-'serviceSpecification' is a required property]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_create_rejects_invalid_service[change4-$.relatedParty[0].partyOrPartyRole]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_create_accepts_spec_example` | API | create accepts spec example | ✅ passed (233 ms) | ✅ passed (265 ms) |
-| `test_patch_must_keep_the_service_valid` | API | patch must keep the service valid | ✅ passed (6 ms) | ✅ passed (7 ms) |
-| `test_sort_numbers_numerically_missing_values_last` | API | sort numbers numerically missing values last | ✅ passed (16 ms) | ✅ passed (33 ms) |
-| `test_sort_by_several_attributes` | API | sort by several attributes | ✅ passed (6 ms) | ✅ passed (19 ms) |
-| `test_sort_with_pagination` | API | sort with pagination | ✅ passed (3 ms) | ✅ passed (8 ms) |
-| `test_invalid_sort_is_bad_request[na'me]` | API | invalid sort is bad request | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_invalid_sort_is_bad_request[a..b]` | API | invalid sort is bad request | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_invalid_sort_is_bad_request[-]` | API | invalid sort is bad request | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_invalid_sort_is_bad_request[]` | API | invalid sort is bad request | ✅ passed (15 ms) | ✅ passed (25 ms) |
+| `test_create_returns_resource` | API | create returns resource | ✅ passed (36 ms) | ✅ passed (567 ms) |
+| `test_retrieve` | API | retrieve | ✅ passed (2 ms) | ✅ passed (25 ms) |
+| `test_retrieve_with_fields` | API | retrieve with fields | ✅ passed (1 ms) | ✅ passed (18 ms) |
+| `test_retrieve_unknown_and_invalid_id` | API | retrieve unknown and invalid id | ✅ passed (1 ms) | ✅ passed (29 ms) |
+| `test_attribute_filter` | API | attribute filter | ✅ passed (7 ms) | ✅ passed (156 ms) |
+| `test_attribute_filter_dotted_path` | API | attribute filter dotted path | ✅ passed (2 ms) | ✅ passed (146 ms) |
+| `test_attribute_filter_number` | API | attribute filter number | ✅ passed (2 ms) | ✅ passed (55 ms) |
+| `test_attribute_filter_operators` | API | attribute filter operators | ✅ passed (5 ms) | ✅ passed (101 ms) |
+| `test_jsonpath_filter_characteristic` | API | The search the PoC is about: characteristic name AND value in the same array element. | ✅ passed (2 ms) | ✅ passed (36 ms) |
+| `test_jsonpath_filter_does_not_mix_array_elements` | API | jsonpath filter does not mix array elements | ✅ passed (2 ms) | ✅ passed (38 ms) |
+| `test_jsonpath_filter_related_party` | API | jsonpath filter related party | ✅ passed (2 ms) | ✅ passed (35 ms) |
+| `test_quotes_in_values_are_data_not_syntax` | API | quotes in values are data not syntax | ✅ passed (21 ms) | ✅ passed (71 ms) |
+| `test_invalid_filter_is_bad_request` | API | invalid filter is bad request | ✅ passed (2 ms) | ✅ passed (3 ms) |
+| `test_list_fields` | API | list fields | ✅ passed (3 ms) | ✅ passed (50 ms) |
+| `test_pagination` | API | pagination | ✅ passed (50 ms) | ✅ passed (169 ms) |
+| `test_merge_patch` | API | merge patch | ✅ passed (6 ms) | ✅ passed (131 ms) |
+| `test_json_patch` | API | json patch | ✅ passed (3 ms) | ✅ passed (60 ms) |
+| `test_patch_cannot_change_id` | API | patch cannot change id | ✅ passed (2 ms) | ✅ passed (41 ms) |
+| `test_patch_errors` | API | patch errors | ✅ passed (2 ms) | ✅ passed (76 ms) |
+| `test_delete` | API | delete | ✅ passed (6 ms) | ✅ passed (354 ms) |
+| `test_create_rejects_invalid_service[change0-$.state]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (4 ms) |
+| `test_create_rejects_invalid_service[change1-$.startDate]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (2 ms) |
+| `test_create_rejects_invalid_service[change2-$.isStateful]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (2 ms) |
+| `test_create_rejects_invalid_service[change3-'serviceSpecification' is a required property]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (2 ms) |
+| `test_create_rejects_invalid_service[change4-$.relatedParty[0].partyOrPartyRole]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (2 ms) |
+| `test_create_accepts_spec_example` | API | create accepts spec example | ✅ passed (193 ms) | ✅ passed (430 ms) |
+| `test_patch_must_keep_the_service_valid` | API | patch must keep the service valid | ✅ passed (5 ms) | ✅ passed (110 ms) |
+| `test_scalar_value_next_to_an_object_value` | API | scalar value next to an object value | ✅ passed (8 ms) | ✅ passed (174 ms) |
+| `test_scalar_in_an_array_with_objects` | API | scalar in an array with objects | ✅ passed (2 ms) | ✅ passed (39 ms) |
+| `test_filter_inside_an_object_value` | API | filter inside an object value | ✅ passed (4 ms) | ✅ passed (19534 ms) |
+| `test_patch_scalar_value_to_object` | API | patch scalar value to object | ✅ passed (10 ms) | ✅ passed (11275 ms) |
+| `test_sort_numbers_numerically_missing_values_last` | API | sort numbers numerically missing values last | ✅ passed (17 ms) | ✅ passed (392 ms) |
+| `test_sort_by_several_attributes` | API | sort by several attributes | ✅ passed (5 ms) | ✅ passed (87 ms) |
+| `test_sort_with_pagination` | API | sort with pagination | ✅ passed (2 ms) | ✅ passed (47 ms) |
+| `test_invalid_sort_is_bad_request[na'me]` | API | invalid sort is bad request | ✅ passed (1 ms) | ✅ passed (2 ms) |
+| `test_invalid_sort_is_bad_request[a..b]` | API | invalid sort is bad request | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
+| `test_invalid_sort_is_bad_request[-]` | API | invalid sort is bad request | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
+| `test_invalid_sort_is_bad_request[]` | API | invalid sort is bad request | ✅ passed (16 ms) | ✅ passed (527 ms) |
 
 ### `test_events.py`
 
@@ -90,13 +94,13 @@ API runs in a container).
 
 | Test | Level | Description | PostgreSQL | Oracle |
 |---|---|---|---|---|
-| `test_hub_lifecycle` | API | hub lifecycle | ✅ passed (8 ms) | ✅ passed (12 ms) |
-| `test_invalid_hub_is_bad_request[body0]` | API | invalid hub is bad request | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_invalid_hub_is_bad_request[body1]` | API | invalid hub is bad request | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_invalid_hub_is_bad_request[body2]` | API | invalid hub is bad request | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_service_lifecycle_events` | API | service lifecycle events | ✅ passed (108 ms) | ✅ passed (112 ms) |
-| `test_hub_query_selects_event_types` | API | hub query selects event types | ✅ passed (587 ms) | ✅ passed (592 ms) |
-| `test_no_events_after_hub_deletion` | API | no events after hub deletion | ✅ passed (1433 ms) | ✅ passed (1431 ms) |
+| `test_hub_lifecycle` | API | hub lifecycle | ✅ passed (7 ms) | ✅ passed (276 ms) |
+| `test_invalid_hub_is_bad_request[body0]` | API | invalid hub is bad request | ✅ passed (< 1 ms) | ✅ passed (3 ms) |
+| `test_invalid_hub_is_bad_request[body1]` | API | invalid hub is bad request | ✅ passed (< 1 ms) | ✅ passed (2 ms) |
+| `test_invalid_hub_is_bad_request[body2]` | API | invalid hub is bad request | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
+| `test_service_lifecycle_events` | API | service lifecycle events | ✅ passed (96 ms) | ✅ passed (577 ms) |
+| `test_hub_query_selects_event_types` | API | hub query selects event types | ✅ passed (593 ms) | ✅ passed (1024 ms) |
+| `test_no_events_after_hub_deletion` | API | no events after hub deletion | ✅ passed (1426 ms) | ✅ passed (1741 ms) |
 
 ### `test_query.py`
 
@@ -104,25 +108,25 @@ Unit tests for the TMF630 filter parser and SQL/JSON path renderers (no DB neede
 
 | Test | Level | Description | PostgreSQL | Oracle |
 |---|---|---|---|---|
-| `test_attribute_filter_pg[params0-$ ? (@."serviceType" == "Cloud")]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
-| `test_attribute_filter_pg[params1-$ ? ((@."state" == "active") \|\| (@."state" == "inactive"))]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
-| `test_attribute_filter_pg[params2-$ ? (@."relatedParty"."partyOrPartyRole"."name" == "Peter Meyer")]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_attribute_filter_pg[params0-$ ? (@."serviceType" == "Cloud")]` | Unit | attribute filter pg | ✅ passed (1 ms) | ✅ passed (2 ms) |
+| `test_attribute_filter_pg[params1-$ ? ((@."state" == "active") \|\| (@."state" == "inactive"))]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
+| `test_attribute_filter_pg[params2-$ ? (@."relatedParty"."partyOrPartyRole"."name" == "Peter Meyer")]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
 | `test_attribute_filter_pg[params3-$ ? (@."startDate" >= "2024-01-01")]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_attribute_filter_pg[params4-$ ? (@."startDate" >= "2024-01-01")]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_attribute_filter_pg[params5-$ ? (@."state" != "active")]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_attribute_filter_pg[params6-$ ? ((@."value" == "300") \|\| (@."value" == 300))]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_attribute_filter_pg[params7-$ ? ((@."isEnabled" == "true") \|\| (@."isEnabled" == true))]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_attribute_filter_pg[params8-$ ? (@."@type" == "Service")]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
-| `test_jsonpath_filter_pg[$.serviceCharacteristic[?(@.name=='mac' && @.value=='00:11:22:33:44:55')]-$."serviceCharacteristic"[*] ? ((@."name" == "mac") && (@."value" == "00:11:22:33:44:55"))]` | Unit | jsonpath filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_jsonpath_filter_pg[$.serviceCharacteristic[?(@.name=='mac' && @.value=='00:11:22:33:44:55')]-$."serviceCharacteristic"[*] ? ((@."name" == "mac") && (@."value" == "00:11:22:33:44:55"))]` | Unit | jsonpath filter pg | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
 | `test_jsonpath_filter_pg[$.relatedParty[?(@.partyOrPartyRole.name=='Peter Meyer')]-$."relatedParty"[*] ? (@."partyOrPartyRole"."name" == "Peter Meyer")]` | Unit | jsonpath filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_jsonpath_filter_pg[$.feature[*].featureCharacteristic[?(@.value==true)]-$."feature"[*]."featureCharacteristic"[*] ? (@."value" == true)]` | Unit | jsonpath filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_jsonpath_filter_pg[$[?(@.state=='a' \|\| !(@.x > 3.5))]-$ ? ((@."state" == "a") \|\| (!(@."x" > 3.5)))]` | Unit | jsonpath filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_jsonpath_filter_pg[$['@type']-$."@type"]` | Unit | jsonpath filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_jsonpath_filter_pg[$[?(@.@type=='Service')]-$ ? (@."@type" == "Service")]` | Unit | jsonpath filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_jsonpath_filter_pg[$[?(@.endDate)]-$ ? (exists(@."endDate"))]` | Unit | jsonpath filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
-| `test_jsonpath_filter_pg[$[?(@.name=="a\\"b")]-$ ? (@."name" == "a\\"b")]` | Unit | jsonpath filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_jsonpath_filter_pg[$[?(@.name=="a\\"b")]-$ ? (@."name" == "a\\"b")]` | Unit | jsonpath filter pg | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
 | `test_oracle_uses_bind_variables_for_strings` | Unit | oracle uses bind variables for strings | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
-| `test_oracle_sql_contains_no_user_strings` | Unit | oracle sql contains no user strings | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
+| `test_oracle_sql_contains_no_user_strings` | Unit | oracle sql contains no user strings | ✅ passed (1 ms) | ✅ passed (3 ms) |
 | `test_pg_sql_binds_the_whole_path` | Unit | pg sql binds the whole path | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_reserved_params_are_not_filters` | Unit | reserved params are not filters | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_invalid_filters_are_rejected[params0]` | Unit | invalid filters are rejected | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
@@ -133,13 +137,14 @@ Unit tests for the TMF630 filter parser and SQL/JSON path renderers (no DB neede
 | `test_invalid_filters_are_rejected[params5]` | Unit | invalid filters are rejected | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_invalid_filters_are_rejected[params6]` | Unit | invalid filters are rejected | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_attribute_filters_grouped_by_prefix[params0-expected0]` | Unit | attribute filters grouped by prefix | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
-| `test_attribute_filters_grouped_by_prefix[params1-expected1]` | Unit | attribute filters grouped by prefix | ✅ passed (1 ms) | ✅ passed (< 1 ms) |
+| `test_attribute_filters_grouped_by_prefix[params1-expected1]` | Unit | attribute filters grouped by prefix | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_attribute_filters_grouped_by_prefix[params2-expected2]` | Unit | attribute filters grouped by prefix | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_attribute_filters_grouped_by_prefix[params3-expected3]` | Unit | attribute filters grouped by prefix | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_reference_is_resolved` | Unit | reference is resolved | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_jsonpath_and_attribute_syntax_resolve_alike` | Unit | jsonpath and attribute syntax resolve alike | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_reference_sql_joins_by_id[postgresql]` | Unit | reference sql joins by id | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
-| `test_reference_sql_joins_by_id[oracle]` | Unit | reference sql joins by id | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_reference_sql_joins_by_id[oracle]` | Unit | reference sql joins by id | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
+| `test_oracle_reference_hash_semi_join_only_with_other_conditions` | Unit | oracle reference hash semi join only with other conditions | ✅ passed (1 ms) | ✅ passed (1 ms) |
 | `test_join_only_when_dereferencing[params0-False]` | Unit | join only when dereferencing | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_join_only_when_dereferencing[params1-False]` | Unit | join only when dereferencing | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_join_only_when_dereferencing[params2-True]` | Unit | join only when dereferencing | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
@@ -158,6 +163,17 @@ Unit tests for the TMF630 filter parser and SQL/JSON path renderers (no DB neede
 | `test_invalid_sort_is_rejected[a[0]]` | Unit | invalid sort is rejected | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_render_sort[postgresql-expected0]` | Unit | render sort | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_render_sort[oracle-expected1]` | Unit | render sort | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_uses_search_column[params0-True]` | Unit | uses search column | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_uses_search_column[params1-True]` | Unit | uses search column | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_uses_search_column[params2-False]` | Unit | uses search column | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_uses_search_column[params3-False]` | Unit | uses search column | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_uses_search_column[params4-False]` | Unit | uses search column | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_uses_search_column[params5-False]` | Unit | uses search column | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_uses_search_column[params6-False]` | Unit | uses search column | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_uses_search_column[params7-True]` | Unit | uses search column | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_uses_search_column[params8-False]` | Unit | uses search column | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_oracle_checks_characteristic_values_on_search_and_payload` | Unit | oracle checks characteristic values on search and payload | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_embedded_and_referenced_branches_use_search` | Unit | embedded and referenced branches use search | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 
 ### `test_relationships.py`
 
@@ -175,17 +191,17 @@ Data model per test run (all scoped by serviceType "Rel-<run id>" of the referen
 
 | Test | Level | Description | PostgreSQL | Oracle |
 |---|---|---|---|---|
-| `test_attribute_filter_through_relationship` | API | attribute filter through relationship | ✅ passed (33 ms) | ✅ passed (54 ms) |
-| `test_jsonpath_filter_through_relationship` | API | jsonpath filter through relationship | ✅ passed (5 ms) | ✅ passed (26 ms) |
-| `test_relationship_type_applies_to_the_same_relationship` | API | relationship type applies to the same relationship | ✅ passed (8 ms) | ✅ passed (26 ms) |
-| `test_characteristic_name_and_value_from_the_same_element` | API | G has a mac and the value 00:11:22:33:44:55, but not in the same characteristic -> F must not match. | ✅ passed (6 ms) | ✅ passed (28 ms) |
-| `test_repeated_parameter_means_separate_elements` | API | repeated parameter means separate elements | ✅ passed (4 ms) | ✅ passed (9 ms) |
-| `test_attribute_of_the_referenced_service` | API | attribute of the referenced service | ✅ passed (1534 ms) | ✅ passed (303 ms) |
-| `test_filter_on_reference_fields_needs_no_join` | API | filter on reference fields needs no join | ✅ passed (3 ms) | ✅ passed (9 ms) |
-| `test_supporting_service` | API | supporting service | ✅ passed (5 ms) | ✅ passed (21 ms) |
-| `test_no_match` | API | no match | ✅ passed (4 ms) | ✅ passed (3 ms) |
-| `test_pagination_header_counts_joined_matches` | API | pagination header counts joined matches | ✅ passed (4 ms) | ✅ passed (13 ms) |
-| `test_nested_references_are_rejected` | API | nested references are rejected | ✅ passed (20 ms) | ✅ passed (22 ms) |
+| `test_attribute_filter_through_relationship` | API | attribute filter through relationship | ✅ passed (27 ms) | ✅ passed (991 ms) |
+| `test_jsonpath_filter_through_relationship` | API | jsonpath filter through relationship | ✅ passed (5 ms) | ✅ passed (42 ms) |
+| `test_relationship_type_applies_to_the_same_relationship` | API | relationship type applies to the same relationship | ✅ passed (8 ms) | ✅ passed (66 ms) |
+| `test_characteristic_name_and_value_from_the_same_element` | API | G has a mac and the value 00:11:22:33:44:55, but not in the same characteristic -> F must not match. | ✅ passed (5 ms) | ✅ passed (148 ms) |
+| `test_repeated_parameter_means_separate_elements` | API | repeated parameter means separate elements | ✅ passed (3 ms) | ✅ passed (37 ms) |
+| `test_attribute_of_the_referenced_service` | API | attribute of the referenced service | ✅ passed (2501 ms) | ✅ passed (11292 ms) |
+| `test_filter_on_reference_fields_needs_no_join` | API | filter on reference fields needs no join | ✅ passed (2 ms) | ✅ passed (42 ms) |
+| `test_supporting_service` | API | supporting service | ✅ passed (4 ms) | ✅ passed (39 ms) |
+| `test_no_match` | API | no match | ✅ passed (3 ms) | ✅ passed (126 ms) |
+| `test_pagination_header_counts_joined_matches` | API | pagination header counts joined matches | ✅ passed (3 ms) | ✅ passed (44 ms) |
+| `test_nested_references_are_rejected` | API | nested references are rejected | ✅ passed (14 ms) | ✅ passed (752 ms) |
 
 ## Performance
 
@@ -197,15 +213,16 @@ Data model per test run (all scoped by serviceType "Rel-<run id>" of the referen
 http://127.0.0.1:8001: 50000 services
 
 query                                     matches   p50 ms   p95 ms
-mac (JSONPath filter, name && value)            1      1.7      3.0
-mac (attribute filter)                          1      1.7      1.8
-mac, no match                                   0      1.7      2.3
-A related to B with mac (join)                  1      3.1      5.2
-related to B with mac, no match (join)          0      3.1      4.1
-rare relatedParty name                         10      1.9      2.2
-serviceType + state (~3%)                    1713      7.9      8.7
-range startDate.gte (no index)                529    134.6    145.5
-no filter, deep page                        50000      5.8      7.5
+mac (JSONPath filter, name && value)            1      1.9      2.3
+mac (attribute filter)                          1      1.7      2.3
+mac, no match                                   0      1.8      2.2
+A related to B with mac (join)                  1      3.3      3.7
+related to B with mac, no match (join)          0      3.0      3.5
+referenced service state (join, ~3%)          857    853.1    889.2
+rare relatedParty name                         10      1.6      1.8
+serviceType + state (~3%)                    1713      7.5      9.9
+range startDate.gte (no index)                529    131.5    140.3
+no filter, deep page                        50000      5.3      6.8
 ```
 
 <details><summary>Execution plans</summary>
@@ -224,8 +241,8 @@ no filter, deep page                        50000      5.8      7.5
                               Index Cond: (payload @? '$."serviceCharacteristic"[*]?(@."name" == "mac" && @."value" == "02:00:00:00:61:af")'::jsonpath)
       ->  Index Scan using service_pkey on service (actual rows=1 loops=1)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.442 ms
-    Execution Time: 0.235 ms
+    Planning Time: 1.018 ms
+    Execution Time: 0.279 ms
 
 === mac (attribute filter)
     Nested Loop (actual rows=1 loops=1)
@@ -240,8 +257,8 @@ no filter, deep page                        50000      5.8      7.5
                               Index Cond: (payload @? '$?(@."serviceCharacteristic"."value" == "02:00:00:00:61:af")'::jsonpath)
       ->  Index Scan using service_pkey on service (actual rows=1 loops=1)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.083 ms
-    Execution Time: 0.060 ms
+    Planning Time: 0.087 ms
+    Execution Time: 0.082 ms
 
 === mac, no match
     Nested Loop (actual rows=0 loops=1)
@@ -255,8 +272,8 @@ no filter, deep page                        50000      5.8      7.5
                               Index Cond: (payload @? '$."serviceCharacteristic"[*]?(@."name" == "mac" && @."value" == "ff:ff:ff:ff:ff:ff")'::jsonpath)
       ->  Index Scan using service_pkey on service (never executed)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.064 ms
-    Execution Time: 0.089 ms
+    Planning Time: 0.096 ms
+    Execution Time: 0.118 ms
 
 === A related to B with mac (join)
     Nested Loop (actual rows=1 loops=1)
@@ -287,8 +304,8 @@ no filter, deep page                        50000      5.8      7.5
                   Heap Fetches: 0
       ->  Index Scan using service_pkey on service (actual rows=1 loops=1)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.225 ms
-    Execution Time: 0.806 ms
+    Planning Time: 0.291 ms
+    Execution Time: 0.948 ms
 
 === related to B with mac, no match (join)
     Nested Loop (actual rows=0 loops=1)
@@ -317,8 +334,41 @@ no filter, deep page                        50000      5.8      7.5
                   Heap Fetches: 0
       ->  Index Scan using service_pkey on service (never executed)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.069 ms
-    Execution Time: 0.395 ms
+    Planning Time: 0.133 ms
+    Execution Time: 0.570 ms
+
+=== referenced service state (join, ~3%)
+    Nested Loop (actual rows=100 loops=1)
+      ->  Limit (actual rows=100 loops=1)
+            InitPlan 1 (returns $1)
+              ->  HashAggregate (actual rows=4222 loops=1)
+                    Group Key: s1.id
+                    Batches: 1  Memory Usage: 1809kB
+                    ->  Append (actual rows=4222 loops=1)
+                          ->  Bitmap Heap Scan on service s1 (actual rows=0 loops=1)
+                                Recheck Cond: (payload @? '$?(exists (@."serviceRelationship"."service"[*]?(@."state" == "suspended")))'::jsonpath)
+                                ->  Bitmap Index Scan on ix_service_payload_gin (actual rows=0 loops=1)
+                                      Index Cond: (payload @? '$?(exists (@."serviceRelationship"."service"[*]?(@."state" == "suspended")))'::jsonpath)
+                          ->  Nested Loop (actual rows=4222 loops=1)
+                                ->  Bitmap Heap Scan on service t2 (actual rows=8421 loops=1)
+                                      Recheck Cond: (payload @? '$?(@."state" == "suspended")'::jsonpath)
+                                      Heap Blocks: exact=6536
+                                      ->  Bitmap Index Scan on ix_service_payload_gin (actual rows=8475 loops=1)
+                                            Index Cond: (payload @? '$?(@."state" == "suspended")'::jsonpath)
+                                ->  Bitmap Heap Scan on service s2 (actual rows=1 loops=8421)
+                                      Recheck Cond: (payload @> jsonb_build_object('serviceRelationship', jsonb_build_array(jsonb_build_object('service', jsonb_build_object('id', (t2.payload -> 'id'::text))))))
+                                      Filter: jsonb_path_exists(payload, '$?(@."serviceRelationship"."service"."id" == $"ref_id")'::jsonpath, jsonb_build_object('ref_id', (t2.payload -> 'id'::text)), false)
+                                      Heap Blocks: exact=4222
+                                      ->  Bitmap Index Scan on ix_service_payload_gin (actual rows=1 loops=8421)
+                                            Index Cond: (payload @> jsonb_build_object('serviceRelationship', jsonb_build_array(jsonb_build_object('service', jsonb_build_object('id', (t2.payload -> 'id'::text))))))
+            ->  Index Scan using service_pkey on service service_1 (actual rows=100 loops=1)
+                  Index Cond: (id = ANY ($1))
+                  Filter: (payload @? '$?(@."serviceType" == "Cloud")'::jsonpath)
+                  Rows Removed by Filter: 433
+      ->  Index Scan using service_pkey on service (actual rows=1 loops=100)
+            Index Cond: (id = service_1.id)
+    Planning Time: 0.084 ms
+    Execution Time: 433.615 ms
 
 === rare relatedParty name
     Nested Loop (actual rows=10 loops=1)
@@ -333,8 +383,8 @@ no filter, deep page                        50000      5.8      7.5
                               Index Cond: (payload @? '$?(@."relatedParty"."partyOrPartyRole"."name" == "Customer 00001")'::jsonpath)
       ->  Index Scan using service_pkey on service (actual rows=1 loops=10)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.052 ms
-    Execution Time: 0.142 ms
+    Planning Time: 0.105 ms
+    Execution Time: 0.129 ms
 
 === serviceType + state (~3%)
     Nested Loop (actual rows=100 loops=1)
@@ -349,8 +399,8 @@ no filter, deep page                        50000      5.8      7.5
                               Index Cond: ((payload @? '$?(@."serviceType" == "Cloud")'::jsonpath) AND (payload @? '$?(@."state" == "suspended")'::jsonpath))
       ->  Index Scan using service_pkey on service (actual rows=1 loops=100)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.050 ms
-    Execution Time: 3.558 ms
+    Planning Time: 0.069 ms
+    Execution Time: 1.841 ms
 
 === range startDate.gte (no index)
     Nested Loop (actual rows=100 loops=1)
@@ -360,18 +410,18 @@ no filter, deep page                        50000      5.8      7.5
                   Rows Removed by Filter: 8791
       ->  Index Scan using service_pkey on service (actual rows=1 loops=100)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.047 ms
-    Execution Time: 5.669 ms
+    Planning Time: 0.063 ms
+    Execution Time: 4.715 ms
 
 === no filter, deep page
     Nested Loop (actual rows=100 loops=1)
       ->  Limit (actual rows=100 loops=1)
             ->  Index Only Scan using service_pkey on service service_1 (actual rows=49900 loops=1)
-                  Heap Fetches: 406
+                  Heap Fetches: 882
       ->  Index Scan using service_pkey on service (actual rows=1 loops=100)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.055 ms
-    Execution Time: 1.542 ms
+    Planning Time: 0.056 ms
+    Execution Time: 1.404 ms
 ```
 
 </details>
@@ -379,25 +429,26 @@ no filter, deep page                        50000      5.8      7.5
 ### Oracle
 
 ```text
-http://127.0.0.1:8002: 50000 services
+http://127.0.0.1:8003: 1000000 services
 
 query                                     matches   p50 ms   p95 ms
-mac (JSONPath filter, name && value)            1      1.6      2.0
-mac (attribute filter)                          1      1.4      1.9
-mac, no match                                   0      1.5      2.0
-A related to B with mac (join)                  1      1.9      2.6
-related to B with mac, no match (join)          0      1.4      1.6
-rare relatedParty name                         10      1.6      2.2
-serviceType + state (~3%)                    1713     21.3     23.9
-range startDate.gte (no index)                529     51.4     57.6
-no filter, deep page                        50000      8.4      9.1
+mac (JSONPath filter, name && value)            1     30.2     74.2
+mac (attribute filter)                          1     30.7     52.1
+mac, no match                                   0     23.1     48.0
+A related to B with mac (join)                  1     25.9     37.4
+related to B with mac, no match (join)          0     29.9     52.3
+referenced service state (join, ~3%)        16570   9052.0  11992.0
+rare relatedParty name                         10     30.7     55.5
+serviceType + state (~3%)                   33241   3560.1   4353.4
+range startDate.gte (no index)              10890   1896.2   2213.9
+no filter, deep page                      1000000    311.9    376.9
 ```
 
 <details><summary>Execution plans</summary>
 
 ```text
 === mac (JSONPath filter, name && value)
-    Plan hash value: 1496678595
+    Plan hash value: 2615798862
      
     ----------------------------------------------------------------------
     | Id  | Operation                            | Name                  |
@@ -410,7 +461,7 @@ no filter, deep page                        50000      8.4      9.1
     |*  5 |      WINDOW SORT PUSHED RANK         |                       |
     |*  6 |       TABLE ACCESS BY INDEX ROWID    | SERVICE               |
     |*  7 |        INDEX RANGE SCAN (MULTI VALUE)| IX_SERVICE_CHAR_VALUE |
-    |*  8 |    INDEX UNIQUE SCAN                 | SYS_C008729           |
+    |*  8 |    INDEX UNIQUE SCAN                 | SYS_C008721           |
     |   9 |   TABLE ACCESS BY INDEX ROWID        | SERVICE               |
     ----------------------------------------------------------------------
      
@@ -424,45 +475,20 @@ no filter, deep page                        50000      8.4      9.1
                   '$."serviceCharacteristic"[*] ? ((@."name" == $v0) && (@."value" == 
                   $v1))' /* json_path_str  $.serviceCharacteristic[*]?((@.name.string() 
                   == $v0) && (@.value.string() == $v1))  */  PASSING :Q0_0 AS "v0" , 
-                  :Q0_1 AS "v1" FALSE ON ERROR TYPE(LAX) )=1)
-       7 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+                  :Q0_1 AS "v1" FALSE ON ERROR TYPE(LAX) )=1 AND JSON_EXISTS2("SEARCH" 
+                  /*+ LOB_BY_VALUE */  FORMAT OSON , '$."serviceCharacteristic"[*] ? 
+                  ((@."name" == $v0) && (@."value" == $v1))' /* json_path_str  
+                  $.serviceCharacteristic[*]?((@.name.string() == $v0) && 
+                  (@.value.string() == $v1))  */  PASSING :Q0_0 AS "v0" , :Q0_1 AS "v1" 
+                  FALSE ON ERROR TYPE(LAX) )=1)
+       7 - access(JSON_QUERY("SEARCH" /*+ LOB_BY_VALUE */  FORMAT OSON , 
                   '$.serviceCharacteristic.value.string()' RETURNING VARCHAR2(4000) ASIS  
                   WITHOUT ARRAY WRAPPER ERROR ON ERROR NULL ON EMPTY NULL ON MISMATCH 
                   TYPE(LAX)  MULTIVALUE)=:Q0_1)
        8 - access("SERVICE"."ID"="PAGE"."ID")
 
 === mac (attribute filter)
-    Plan hash value: 1496678595
-     
-    ----------------------------------------------------------------------
-    | Id  | Operation                            | Name                  |
-    ----------------------------------------------------------------------
-    |   0 | SELECT STATEMENT                     |                       |
-    |   1 |  NESTED LOOPS                        |                       |
-    |   2 |   NESTED LOOPS                       |                       |
-    |   3 |    VIEW                              |                       |
-    |*  4 |     VIEW                             |                       |
-    |*  5 |      WINDOW SORT PUSHED RANK         |                       |
-    |   6 |       TABLE ACCESS BY INDEX ROWID    | SERVICE               |
-    |*  7 |        INDEX RANGE SCAN (MULTI VALUE)| IX_SERVICE_CHAR_VALUE |
-    |*  8 |    INDEX UNIQUE SCAN                 | SYS_C008729           |
-    |   9 |   TABLE ACCESS BY INDEX ROWID        | SERVICE               |
-    ----------------------------------------------------------------------
-     
-    Predicate Information (identified by operation id):
-    ---------------------------------------------------
-     
-       4 - filter("from$_subquery$_004"."rowlimit_$$_rownumber"<=100 AND 
-                  "from$_subquery$_004"."rowlimit_$$_rownumber">0)
-       5 - filter(ROW_NUMBER() OVER ( ORDER BY "SERVICE"."ID")<=100)
-       7 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
-                  '$.serviceCharacteristic.value.string()' RETURNING VARCHAR2(4000) ASIS  
-                  WITHOUT ARRAY WRAPPER ERROR ON ERROR NULL ON EMPTY NULL ON MISMATCH 
-                  TYPE(LAX)  MULTIVALUE)=:Q0_0)
-       8 - access("SERVICE"."ID"="PAGE"."ID")
-
-=== mac, no match
-    Plan hash value: 1496678595
+    Plan hash value: 2615798862
      
     ----------------------------------------------------------------------
     | Id  | Operation                            | Name                  |
@@ -475,7 +501,41 @@ no filter, deep page                        50000      8.4      9.1
     |*  5 |      WINDOW SORT PUSHED RANK         |                       |
     |*  6 |       TABLE ACCESS BY INDEX ROWID    | SERVICE               |
     |*  7 |        INDEX RANGE SCAN (MULTI VALUE)| IX_SERVICE_CHAR_VALUE |
-    |*  8 |    INDEX UNIQUE SCAN                 | SYS_C008729           |
+    |*  8 |    INDEX UNIQUE SCAN                 | SYS_C008721           |
+    |   9 |   TABLE ACCESS BY INDEX ROWID        | SERVICE               |
+    ----------------------------------------------------------------------
+     
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+     
+       4 - filter("from$_subquery$_004"."rowlimit_$$_rownumber"<=100 AND 
+                  "from$_subquery$_004"."rowlimit_$$_rownumber">0)
+       5 - filter(ROW_NUMBER() OVER ( ORDER BY "SERVICE"."ID")<=100)
+       6 - filter(JSON_EXISTS2("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+                  '$ ? (@."serviceCharacteristic"."value" == $v0)' /* json_path_str  
+                  $?(@.serviceCharacteristic.value.string() == $v0)  */  PASSING :Q0_0 AS 
+                  "v0" FALSE ON ERROR TYPE(LAX) )=1)
+       7 - access(JSON_QUERY("SEARCH" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+                  '$.serviceCharacteristic.value.string()' RETURNING VARCHAR2(4000) ASIS  
+                  WITHOUT ARRAY WRAPPER ERROR ON ERROR NULL ON EMPTY NULL ON MISMATCH 
+                  TYPE(LAX)  MULTIVALUE)=:Q0_0)
+       8 - access("SERVICE"."ID"="PAGE"."ID")
+
+=== mac, no match
+    Plan hash value: 2615798862
+     
+    ----------------------------------------------------------------------
+    | Id  | Operation                            | Name                  |
+    ----------------------------------------------------------------------
+    |   0 | SELECT STATEMENT                     |                       |
+    |   1 |  NESTED LOOPS                        |                       |
+    |   2 |   NESTED LOOPS                       |                       |
+    |   3 |    VIEW                              |                       |
+    |*  4 |     VIEW                             |                       |
+    |*  5 |      WINDOW SORT PUSHED RANK         |                       |
+    |*  6 |       TABLE ACCESS BY INDEX ROWID    | SERVICE               |
+    |*  7 |        INDEX RANGE SCAN (MULTI VALUE)| IX_SERVICE_CHAR_VALUE |
+    |*  8 |    INDEX UNIQUE SCAN                 | SYS_C008721           |
     |   9 |   TABLE ACCESS BY INDEX ROWID        | SERVICE               |
     ----------------------------------------------------------------------
      
@@ -489,141 +549,236 @@ no filter, deep page                        50000      8.4      9.1
                   '$."serviceCharacteristic"[*] ? ((@."name" == $v0) && (@."value" == 
                   $v1))' /* json_path_str  $.serviceCharacteristic[*]?((@.name.string() 
                   == $v0) && (@.value.string() == $v1))  */  PASSING :Q0_0 AS "v0" , 
-                  :Q0_1 AS "v1" FALSE ON ERROR TYPE(LAX) )=1)
-       7 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+                  :Q0_1 AS "v1" FALSE ON ERROR TYPE(LAX) )=1 AND JSON_EXISTS2("SEARCH" 
+                  /*+ LOB_BY_VALUE */  FORMAT OSON , '$."serviceCharacteristic"[*] ? 
+                  ((@."name" == $v0) && (@."value" == $v1))' /* json_path_str  
+                  $.serviceCharacteristic[*]?((@.name.string() == $v0) && 
+                  (@.value.string() == $v1))  */  PASSING :Q0_0 AS "v0" , :Q0_1 AS "v1" 
+                  FALSE ON ERROR TYPE(LAX) )=1)
+       7 - access(JSON_QUERY("SEARCH" /*+ LOB_BY_VALUE */  FORMAT OSON , 
                   '$.serviceCharacteristic.value.string()' RETURNING VARCHAR2(4000) ASIS  
                   WITHOUT ARRAY WRAPPER ERROR ON ERROR NULL ON EMPTY NULL ON MISMATCH 
                   TYPE(LAX)  MULTIVALUE)=:Q0_1)
        8 - access("SERVICE"."ID"="PAGE"."ID")
 
 === A related to B with mac (join)
-    Plan hash value: 995588135
+    Plan hash value: 851877462
      
-    ---------------------------------------------------------------------------
-    | Id  | Operation                                 | Name                  |
-    ---------------------------------------------------------------------------
-    |   0 | SELECT STATEMENT                          |                       |
-    |   1 |  NESTED LOOPS                             |                       |
-    |   2 |   NESTED LOOPS                            |                       |
-    |   3 |    VIEW                                   |                       |
-    |*  4 |     VIEW                                  |                       |
-    |*  5 |      WINDOW SORT PUSHED RANK              |                       |
-    |   6 |       NESTED LOOPS                        |                       |
-    |   7 |        VIEW                               | VW_NSO_1              |
-    |   8 |         HASH UNIQUE                       |                       |
-    |   9 |          UNION-ALL                        |                       |
-    |* 10 |           TABLE ACCESS BY INDEX ROWID     | SERVICE               |
-    |* 11 |            INDEX RANGE SCAN (MULTI VALUE) | IX_SVC_REL_CHAR_NAME  |
-    |  12 |           NESTED LOOPS                    |                       |
-    |* 13 |            TABLE ACCESS BY INDEX ROWID    | SERVICE               |
-    |* 14 |             INDEX RANGE SCAN (MULTI VALUE)| IX_SERVICE_CHAR_VALUE |
-    |  15 |            TABLE ACCESS BY INDEX ROWID    | SERVICE               |
-    |* 16 |             INDEX RANGE SCAN (MULTI VALUE)| IX_SVC_REL_ID         |
-    |* 17 |        INDEX UNIQUE SCAN                  | SYS_C008729           |
-    |* 18 |    INDEX UNIQUE SCAN                      | SYS_C008729           |
-    |  19 |   TABLE ACCESS BY INDEX ROWID             | SERVICE               |
-    ---------------------------------------------------------------------------
+    ------------------------------------------------------------------------------
+    | Id  | Operation                                    | Name                  |
+    ------------------------------------------------------------------------------
+    |   0 | SELECT STATEMENT                             |                       |
+    |   1 |  NESTED LOOPS                                |                       |
+    |   2 |   NESTED LOOPS                               |                       |
+    |   3 |    VIEW                                      |                       |
+    |*  4 |     VIEW                                     |                       |
+    |*  5 |      WINDOW SORT PUSHED RANK                 |                       |
+    |   6 |       NESTED LOOPS                           |                       |
+    |   7 |        VIEW                                  | VW_NSO_1              |
+    |   8 |         COUNT                                |                       |
+    |*  9 |          FILTER                              |                       |
+    |  10 |           VIEW                               |                       |
+    |  11 |            HASH UNIQUE                       |                       |
+    |  12 |             UNION-ALL                        |                       |
+    |* 13 |              TABLE ACCESS BY INDEX ROWID     | SERVICE               |
+    |* 14 |               INDEX RANGE SCAN (MULTI VALUE) | IX_SVC_REL_CHAR_NAME  |
+    |  15 |              NESTED LOOPS                    |                       |
+    |* 16 |               TABLE ACCESS BY INDEX ROWID    | SERVICE               |
+    |* 17 |                INDEX RANGE SCAN (MULTI VALUE)| IX_SERVICE_CHAR_VALUE |
+    |  18 |               TABLE ACCESS BY INDEX ROWID    | SERVICE               |
+    |* 19 |                INDEX RANGE SCAN (MULTI VALUE)| IX_SVC_REL_ID         |
+    |* 20 |        INDEX UNIQUE SCAN                     | SYS_C008721           |
+    |* 21 |    INDEX UNIQUE SCAN                         | SYS_C008721           |
+    |  22 |   TABLE ACCESS BY INDEX ROWID                | SERVICE               |
+    ------------------------------------------------------------------------------
      
     Predicate Information (identified by operation id):
     ---------------------------------------------------
      
-       4 - filter("from$_subquery$_008"."rowlimit_$$_rownumber"<=100 AND 
-                  "from$_subquery$_008"."rowlimit_$$_rownumber">0)
+       4 - filter("from$_subquery$_009"."rowlimit_$$_rownumber"<=100 AND 
+                  "from$_subquery$_009"."rowlimit_$$_rownumber">0)
        5 - filter(ROW_NUMBER() OVER ( ORDER BY "SERVICE"."ID")<=100)
-      10 - filter(JSON_EXISTS2("S1"."PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT 
+       9 - filter(ROWNUM>0)
+      13 - filter(JSON_EXISTS2("S1"."PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT 
                   OSON , '$."serviceRelationship"."service"[*] ? 
                   (exists(@."serviceCharacteristic"[*] ? ((@."name" == $v0) && (@."value" 
                   == $v1))))' /* json_path_str  $.serviceRelationship.service[*]?(exists(@
                   .serviceCharacteristic[*]?((@.name.string() == $v0) && 
                   (@.value.string() == $v1))))  */  PASSING :Q0E_0 AS "v0" , :Q0E_1 AS 
+                  "v1" FALSE ON ERROR TYPE(LAX) )=1 AND JSON_EXISTS2("S1"."SEARCH" /*+ 
+                  LOB_BY_VALUE */  FORMAT OSON , '$."serviceRelationship"."service"[*] ? 
+                  (exists(@."serviceCharacteristic"[*] ? ((@."name" == $v0) && (@."value" 
+                  == $v1))))' /* json_path_str  $.serviceRelationship.service[*]?(exists(@
+                  .serviceCharacteristic[*]?((@.name.string() == $v0) && 
+                  (@.value.string() == $v1))))  */  PASSING :Q0E_0 AS "v0" , :Q0E_1 AS 
                   "v1" FALSE ON ERROR TYPE(LAX) )=1)
-      11 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+      14 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
                   '$.serviceRelationship.service.serviceCharacteristic.name.string()' 
                   RETURNING VARCHAR2(4000) ASIS  WITHOUT ARRAY WRAPPER ERROR ON ERROR 
                   NULL ON EMPTY NULL ON MISMATCH TYPE(LAX)  MULTIVALUE)=:Q0E_0)
-      13 - filter(JSON_EXISTS2("T2"."PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT 
+      16 - filter(JSON_EXISTS2("T2"."PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT 
                   OSON , '$."serviceCharacteristic"[*] ? ((@."name" == $v0) && (@."value" 
                   == $v1))' /* json_path_str  $.serviceCharacteristic[*]?((@.name.string()
                    == $v0) && (@.value.string() == $v1))  */  PASSING :Q0T_0 AS "v0" , 
+                  :Q0T_1 AS "v1" FALSE ON ERROR TYPE(LAX) )=1 AND 
+                  JSON_EXISTS2("T2"."SEARCH" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+                  '$."serviceCharacteristic"[*] ? ((@."name" == $v0) && (@."value" == 
+                  $v1))' /* json_path_str  $.serviceCharacteristic[*]?((@.name.string() 
+                  == $v0) && (@.value.string() == $v1))  */  PASSING :Q0T_0 AS "v0" , 
                   :Q0T_1 AS "v1" FALSE ON ERROR TYPE(LAX) )=1)
-      14 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+      17 - access(JSON_QUERY("SEARCH" /*+ LOB_BY_VALUE */  FORMAT OSON , 
                   '$.serviceCharacteristic.value.string()' RETURNING VARCHAR2(4000) ASIS  
                   WITHOUT ARRAY WRAPPER ERROR ON ERROR NULL ON EMPTY NULL ON MISMATCH 
                   TYPE(LAX)  MULTIVALUE)=:Q0T_1)
-      16 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+      19 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
                   '$.serviceRelationship.service.id.string()' RETURNING VARCHAR2(4000) 
                   ASIS  WITHOUT ARRAY WRAPPER ERROR ON ERROR NULL ON EMPTY NULL ON 
                   MISMATCH TYPE(LAX)  MULTIVALUE)=JSON_VALUE("T2"."PAYLOAD" /*+ 
                   LOB_BY_VALUE */  FORMAT OSON , '$.id' RETURNING VARCHAR2(4000) NULL ON 
                   ERROR TYPE(LAX) ))
-      17 - access("SERVICE"."ID"="ID")
-      18 - access("SERVICE"."ID"="PAGE"."ID")
+      20 - access("SERVICE"."ID"="ID")
+      21 - access("SERVICE"."ID"="PAGE"."ID")
 
 === related to B with mac, no match (join)
-    Plan hash value: 995588135
+    Plan hash value: 851877462
      
-    ---------------------------------------------------------------------------
-    | Id  | Operation                                 | Name                  |
-    ---------------------------------------------------------------------------
-    |   0 | SELECT STATEMENT                          |                       |
-    |   1 |  NESTED LOOPS                             |                       |
-    |   2 |   NESTED LOOPS                            |                       |
-    |   3 |    VIEW                                   |                       |
-    |*  4 |     VIEW                                  |                       |
-    |*  5 |      WINDOW SORT PUSHED RANK              |                       |
-    |   6 |       NESTED LOOPS                        |                       |
-    |   7 |        VIEW                               | VW_NSO_1              |
-    |   8 |         HASH UNIQUE                       |                       |
-    |   9 |          UNION-ALL                        |                       |
-    |* 10 |           TABLE ACCESS BY INDEX ROWID     | SERVICE               |
-    |* 11 |            INDEX RANGE SCAN (MULTI VALUE) | IX_SVC_REL_CHAR_NAME  |
-    |  12 |           NESTED LOOPS                    |                       |
-    |* 13 |            TABLE ACCESS BY INDEX ROWID    | SERVICE               |
-    |* 14 |             INDEX RANGE SCAN (MULTI VALUE)| IX_SERVICE_CHAR_VALUE |
-    |  15 |            TABLE ACCESS BY INDEX ROWID    | SERVICE               |
-    |* 16 |             INDEX RANGE SCAN (MULTI VALUE)| IX_SVC_REL_ID         |
-    |* 17 |        INDEX UNIQUE SCAN                  | SYS_C008729           |
-    |* 18 |    INDEX UNIQUE SCAN                      | SYS_C008729           |
-    |  19 |   TABLE ACCESS BY INDEX ROWID             | SERVICE               |
-    ---------------------------------------------------------------------------
+    ------------------------------------------------------------------------------
+    | Id  | Operation                                    | Name                  |
+    ------------------------------------------------------------------------------
+    |   0 | SELECT STATEMENT                             |                       |
+    |   1 |  NESTED LOOPS                                |                       |
+    |   2 |   NESTED LOOPS                               |                       |
+    |   3 |    VIEW                                      |                       |
+    |*  4 |     VIEW                                     |                       |
+    |*  5 |      WINDOW SORT PUSHED RANK                 |                       |
+    |   6 |       NESTED LOOPS                           |                       |
+    |   7 |        VIEW                                  | VW_NSO_1              |
+    |   8 |         COUNT                                |                       |
+    |*  9 |          FILTER                              |                       |
+    |  10 |           VIEW                               |                       |
+    |  11 |            HASH UNIQUE                       |                       |
+    |  12 |             UNION-ALL                        |                       |
+    |* 13 |              TABLE ACCESS BY INDEX ROWID     | SERVICE               |
+    |* 14 |               INDEX RANGE SCAN (MULTI VALUE) | IX_SVC_REL_CHAR_NAME  |
+    |  15 |              NESTED LOOPS                    |                       |
+    |* 16 |               TABLE ACCESS BY INDEX ROWID    | SERVICE               |
+    |* 17 |                INDEX RANGE SCAN (MULTI VALUE)| IX_SERVICE_CHAR_VALUE |
+    |  18 |               TABLE ACCESS BY INDEX ROWID    | SERVICE               |
+    |* 19 |                INDEX RANGE SCAN (MULTI VALUE)| IX_SVC_REL_ID         |
+    |* 20 |        INDEX UNIQUE SCAN                     | SYS_C008721           |
+    |* 21 |    INDEX UNIQUE SCAN                         | SYS_C008721           |
+    |  22 |   TABLE ACCESS BY INDEX ROWID                | SERVICE               |
+    ------------------------------------------------------------------------------
      
     Predicate Information (identified by operation id):
     ---------------------------------------------------
      
-       4 - filter("from$_subquery$_008"."rowlimit_$$_rownumber"<=100 AND 
-                  "from$_subquery$_008"."rowlimit_$$_rownumber">0)
+       4 - filter("from$_subquery$_009"."rowlimit_$$_rownumber"<=100 AND 
+                  "from$_subquery$_009"."rowlimit_$$_rownumber">0)
        5 - filter(ROW_NUMBER() OVER ( ORDER BY "SERVICE"."ID")<=100)
-      10 - filter(JSON_EXISTS2("S1"."PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT 
+       9 - filter(ROWNUM>0)
+      13 - filter(JSON_EXISTS2("S1"."PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT 
                   OSON , '$."serviceRelationship"."service"[*] ? 
                   (exists(@."serviceCharacteristic"[*] ? ((@."name" == $v0) && (@."value" 
                   == $v1))))' /* json_path_str  $.serviceRelationship.service[*]?(exists(@
                   .serviceCharacteristic[*]?((@.name.string() == $v0) && 
                   (@.value.string() == $v1))))  */  PASSING :Q0E_0 AS "v0" , :Q0E_1 AS 
+                  "v1" FALSE ON ERROR TYPE(LAX) )=1 AND JSON_EXISTS2("S1"."SEARCH" /*+ 
+                  LOB_BY_VALUE */  FORMAT OSON , '$."serviceRelationship"."service"[*] ? 
+                  (exists(@."serviceCharacteristic"[*] ? ((@."name" == $v0) && (@."value" 
+                  == $v1))))' /* json_path_str  $.serviceRelationship.service[*]?(exists(@
+                  .serviceCharacteristic[*]?((@.name.string() == $v0) && 
+                  (@.value.string() == $v1))))  */  PASSING :Q0E_0 AS "v0" , :Q0E_1 AS 
                   "v1" FALSE ON ERROR TYPE(LAX) )=1)
-      11 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+      14 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
                   '$.serviceRelationship.service.serviceCharacteristic.name.string()' 
                   RETURNING VARCHAR2(4000) ASIS  WITHOUT ARRAY WRAPPER ERROR ON ERROR 
                   NULL ON EMPTY NULL ON MISMATCH TYPE(LAX)  MULTIVALUE)=:Q0E_0)
-      13 - filter(JSON_EXISTS2("T2"."PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT 
+      16 - filter(JSON_EXISTS2("T2"."PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT 
                   OSON , '$."serviceCharacteristic"[*] ? ((@."name" == $v0) && (@."value" 
                   == $v1))' /* json_path_str  $.serviceCharacteristic[*]?((@.name.string()
                    == $v0) && (@.value.string() == $v1))  */  PASSING :Q0T_0 AS "v0" , 
+                  :Q0T_1 AS "v1" FALSE ON ERROR TYPE(LAX) )=1 AND 
+                  JSON_EXISTS2("T2"."SEARCH" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+                  '$."serviceCharacteristic"[*] ? ((@."name" == $v0) && (@."value" == 
+                  $v1))' /* json_path_str  $.serviceCharacteristic[*]?((@.name.string() 
+                  == $v0) && (@.value.string() == $v1))  */  PASSING :Q0T_0 AS "v0" , 
                   :Q0T_1 AS "v1" FALSE ON ERROR TYPE(LAX) )=1)
-      14 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+      17 - access(JSON_QUERY("SEARCH" /*+ LOB_BY_VALUE */  FORMAT OSON , 
                   '$.serviceCharacteristic.value.string()' RETURNING VARCHAR2(4000) ASIS  
                   WITHOUT ARRAY WRAPPER ERROR ON ERROR NULL ON EMPTY NULL ON MISMATCH 
                   TYPE(LAX)  MULTIVALUE)=:Q0T_1)
-      16 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+      19 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
                   '$.serviceRelationship.service.id.string()' RETURNING VARCHAR2(4000) 
                   ASIS  WITHOUT ARRAY WRAPPER ERROR ON ERROR NULL ON EMPTY NULL ON 
                   MISMATCH TYPE(LAX)  MULTIVALUE)=JSON_VALUE("T2"."PAYLOAD" /*+ 
                   LOB_BY_VALUE */  FORMAT OSON , '$.id' RETURNING VARCHAR2(4000) NULL ON 
                   ERROR TYPE(LAX) ))
-      17 - access("SERVICE"."ID"="ID")
-      18 - access("SERVICE"."ID"="PAGE"."ID")
+      20 - access("SERVICE"."ID"="ID")
+      21 - access("SERVICE"."ID"="PAGE"."ID")
+
+=== referenced service state (join, ~3%)
+    Plan hash value: 3296786116
+     
+    -------------------------------------------------------------------------
+    | Id  | Operation                                    | Name             |
+    -------------------------------------------------------------------------
+    |   0 | SELECT STATEMENT                             |                  |
+    |   1 |  NESTED LOOPS                                |                  |
+    |   2 |   NESTED LOOPS                               |                  |
+    |   3 |    VIEW                                      |                  |
+    |*  4 |     VIEW                                     |                  |
+    |*  5 |      WINDOW SORT PUSHED RANK                 |                  |
+    |*  6 |       HASH JOIN SEMI                         |                  |
+    |   7 |        TABLE ACCESS BY INDEX ROWID           | SERVICE          |
+    |*  8 |         INDEX RANGE SCAN (MULTI VALUE)       | IX_SERVICE_TYPE  |
+    |   9 |        VIEW                                  | VW_NSO_1         |
+    |  10 |         COUNT                                |                  |
+    |* 11 |          FILTER                              |                  |
+    |  12 |           VIEW                               |                  |
+    |  13 |            HASH UNIQUE                       |                  |
+    |  14 |             UNION-ALL                        |                  |
+    |  15 |              TABLE ACCESS BY INDEX ROWID     | SERVICE          |
+    |* 16 |               INDEX RANGE SCAN (MULTI VALUE) | IX_SVC_REL_STATE |
+    |  17 |              NESTED LOOPS                    |                  |
+    |  18 |               TABLE ACCESS BY INDEX ROWID    | SERVICE          |
+    |* 19 |                INDEX RANGE SCAN (MULTI VALUE)| IX_SERVICE_STATE |
+    |  20 |               TABLE ACCESS BY INDEX ROWID    | SERVICE          |
+    |* 21 |                INDEX RANGE SCAN (MULTI VALUE)| IX_SVC_REL_ID    |
+    |* 22 |    INDEX UNIQUE SCAN                         | SYS_C008721      |
+    |  23 |   TABLE ACCESS BY INDEX ROWID                | SERVICE          |
+    -------------------------------------------------------------------------
+     
+    Predicate Information (identified by operation id):
+    ---------------------------------------------------
+     
+       4 - filter("from$_subquery$_009"."rowlimit_$$_rownumber"<=100 AND 
+                  "from$_subquery$_009"."rowlimit_$$_rownumber">0)
+       5 - filter(ROW_NUMBER() OVER ( ORDER BY "SERVICE"."ID")<=100)
+       6 - access("SERVICE"."ID"="ID")
+       8 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+                  '$.serviceType.string()' RETURNING VARCHAR2(4000) ASIS  WITHOUT ARRAY 
+                  WRAPPER ERROR ON ERROR NULL ON EMPTY NULL ON MISMATCH TYPE(LAX)  
+                  MULTIVALUE)=:Q0_0)
+      11 - filter(ROWNUM>0)
+      16 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+                  '$.serviceRelationship.service.state.string()' RETURNING VARCHAR2(4000) 
+                  ASIS  WITHOUT ARRAY WRAPPER ERROR ON ERROR NULL ON EMPTY NULL ON 
+                  MISMATCH TYPE(LAX)  MULTIVALUE)=:Q1E_0)
+      19 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+                  '$.state.string()' RETURNING VARCHAR2(4000) ASIS  WITHOUT ARRAY WRAPPER 
+                  ERROR ON ERROR NULL ON EMPTY NULL ON MISMATCH TYPE(LAX)  
+                  MULTIVALUE)=:Q1T_0)
+      21 - access(JSON_QUERY("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
+                  '$.serviceRelationship.service.id.string()' RETURNING VARCHAR2(4000) 
+                  ASIS  WITHOUT ARRAY WRAPPER ERROR ON ERROR NULL ON EMPTY NULL ON 
+                  MISMATCH TYPE(LAX)  MULTIVALUE)=JSON_VALUE("T2"."PAYLOAD" /*+ 
+                  LOB_BY_VALUE */  FORMAT OSON , '$.id' RETURNING VARCHAR2(4000) NULL ON 
+                  ERROR TYPE(LAX) ))
+      22 - access("SERVICE"."ID"="PAGE"."ID")
 
 === rare relatedParty name
-    Plan hash value: 461321469
+    Plan hash value: 4068136628
      
     ----------------------------------------------------------------------
     | Id  | Operation                            | Name                  |
@@ -636,7 +791,7 @@ no filter, deep page                        50000      8.4      9.1
     |*  5 |      WINDOW SORT PUSHED RANK         |                       |
     |   6 |       TABLE ACCESS BY INDEX ROWID    | SERVICE               |
     |*  7 |        INDEX RANGE SCAN (MULTI VALUE)| IX_SERVICE_PARTY_NAME |
-    |*  8 |    INDEX UNIQUE SCAN                 | SYS_C008729           |
+    |*  8 |    INDEX UNIQUE SCAN                 | SYS_C008721           |
     |   9 |   TABLE ACCESS BY INDEX ROWID        | SERVICE               |
     ----------------------------------------------------------------------
      
@@ -653,7 +808,7 @@ no filter, deep page                        50000      8.4      9.1
        8 - access("SERVICE"."ID"="PAGE"."ID")
 
 === serviceType + state (~3%)
-    Plan hash value: 3265019568
+    Plan hash value: 4283390303
      
     ----------------------------------------------------------------
     | Id  | Operation                            | Name            |
@@ -666,7 +821,7 @@ no filter, deep page                        50000      8.4      9.1
     |*  5 |      WINDOW SORT PUSHED RANK         |                 |
     |*  6 |       TABLE ACCESS BY INDEX ROWID    | SERVICE         |
     |*  7 |        INDEX RANGE SCAN (MULTI VALUE)| IX_SERVICE_TYPE |
-    |*  8 |    INDEX UNIQUE SCAN                 | SYS_C008729     |
+    |*  8 |    INDEX UNIQUE SCAN                 | SYS_C008721     |
     |   9 |   TABLE ACCESS BY INDEX ROWID        | SERVICE         |
     ----------------------------------------------------------------
      
@@ -686,21 +841,22 @@ no filter, deep page                        50000      8.4      9.1
        8 - access("SERVICE"."ID"="PAGE"."ID")
 
 === range startDate.gte (no index)
-    Plan hash value: 1622994807
+    Plan hash value: 4032655598
      
-    ----------------------------------------------------
-    | Id  | Operation                    | Name        |
-    ----------------------------------------------------
-    |   0 | SELECT STATEMENT             |             |
-    |   1 |  NESTED LOOPS                |             |
-    |   2 |   NESTED LOOPS               |             |
-    |   3 |    VIEW                      |             |
-    |*  4 |     VIEW                     |             |
-    |*  5 |      WINDOW SORT PUSHED RANK |             |
-    |*  6 |       TABLE ACCESS FULL      | SERVICE     |
-    |*  7 |    INDEX UNIQUE SCAN         | SYS_C008729 |
-    |   8 |   TABLE ACCESS BY INDEX ROWID| SERVICE     |
-    ----------------------------------------------------
+    --------------------------------------------------------
+    | Id  | Operation                        | Name        |
+    --------------------------------------------------------
+    |   0 | SELECT STATEMENT                 |             |
+    |   1 |  NESTED LOOPS                    |             |
+    |   2 |   NESTED LOOPS                   |             |
+    |   3 |    VIEW                          |             |
+    |*  4 |     VIEW                         |             |
+    |*  5 |      WINDOW NOSORT STOPKEY       |             |
+    |*  6 |       TABLE ACCESS BY INDEX ROWID| SERVICE     |
+    |   7 |        INDEX FULL SCAN           | SYS_C008721 |
+    |*  8 |    INDEX UNIQUE SCAN             | SYS_C008721 |
+    |   9 |   TABLE ACCESS BY INDEX ROWID    | SERVICE     |
+    --------------------------------------------------------
      
     Predicate Information (identified by operation id):
     ---------------------------------------------------
@@ -711,10 +867,10 @@ no filter, deep page                        50000      8.4      9.1
        6 - filter(JSON_EXISTS2("PAYLOAD" /*+ LOB_BY_VALUE */  FORMAT OSON , 
                   '$ ? (@."startDate" >= $v0)' /* json_path_str  $?(@.startDate.string() 
                   >= $v0)  */  PASSING :Q0_0 AS "v0" FALSE ON ERROR TYPE(LAX) )=1)
-       7 - access("SERVICE"."ID"="PAGE"."ID")
+       8 - access("SERVICE"."ID"="PAGE"."ID")
 
 === no filter, deep page
-    Plan hash value: 781428968
+    Plan hash value: 2506426245
      
     ----------------------------------------------------
     | Id  | Operation                    | Name        |
@@ -725,17 +881,17 @@ no filter, deep page                        50000      8.4      9.1
     |   3 |    VIEW                      |             |
     |*  4 |     VIEW                     |             |
     |*  5 |      WINDOW NOSORT STOPKEY   |             |
-    |   6 |       INDEX FULL SCAN        | SYS_C008729 |
-    |*  7 |    INDEX UNIQUE SCAN         | SYS_C008729 |
+    |   6 |       INDEX FULL SCAN        | SYS_C008721 |
+    |*  7 |    INDEX UNIQUE SCAN         | SYS_C008721 |
     |   8 |   TABLE ACCESS BY INDEX ROWID| SERVICE     |
     ----------------------------------------------------
      
     Predicate Information (identified by operation id):
     ---------------------------------------------------
      
-       4 - filter("from$_subquery$_004"."rowlimit_$$_rownumber"<=49900 AND 
-                  "from$_subquery$_004"."rowlimit_$$_rownumber">49800)
-       5 - filter(ROW_NUMBER() OVER ( ORDER BY "SERVICE"."ID")<=49900)
+       4 - filter("from$_subquery$_004"."rowlimit_$$_rownumber"<=999900 AND 
+                  "from$_subquery$_004"."rowlimit_$$_rownumber">999800)
+       5 - filter(ROW_NUMBER() OVER ( ORDER BY "SERVICE"."ID")<=999900)
        7 - access("SERVICE"."ID"="PAGE"."ID")
 ```
 
