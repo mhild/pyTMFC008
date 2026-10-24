@@ -26,7 +26,10 @@ Prerequisites: Docker, `curl`, `python3`. The API has to run with a database; th
   expects `404` for URLs containing `ctk-missing-id`.
 * The payloads it creates and patches are in the kit's `config.json` (`payloads.Service.POST` / `PATCH`); they pass this
   API's schema validation unchanged.
-* Last run: 37 tests, 37 passing (PostgreSQL, history off).
+* Last run (current code, empty database): 37 tests, 37 passing, the slowest test 0.25 s. With a filled database
+  (e.g. 50,000 seeded services) the *Test schema* steps of the list requests take 5+ s: the API answers in a few
+  milliseconds, but the kit validates the 100 returned services against the schema on the client. Use an empty or small
+  database for the run.
 * The **component CTK** for TMFC008 (`TMFC008-ServiceInventory/CTK/componentCTK` in
   [tmforum-rand/TMForum-ODA-Ready-for-publication](https://github.com/tmforum-rand/TMForum-ODA-Ready-for-publication))
   tests the component as part of an ODA Canvas (Kubernetes + Helm) and is not covered here.
