@@ -241,15 +241,15 @@ Measured with 50,000 services on PostgreSQL (local) and **1,000,000 services on 
 
 | Query | PostgreSQL p50 (50k) | Oracle p50 (1M) | Plan |
 |---|---:|---:|---|
-| mac via JSONPath (`name && value`) | 1.9 ms | 30 ms | PG: Bitmap Index Scan GIN · Oracle: INDEX RANGE SCAN (MULTI VALUE) |
-| mac via attribute filter | 1.7 ms | 31 ms | same |
-| mac, no match | 1.8 ms | 23 ms | same |
+| mac via JSONPath (`name && value`) | 1.9 ms | 26 ms | PG: Bitmap Index Scan GIN · Oracle: INDEX RANGE SCAN (MULTI VALUE) |
+| mac via attribute filter | 1.7 ms | 25 ms | same |
+| mac, no match | 1.7 ms | 25 ms | same |
 | A with relationship to B with mac (join) | 3.3 ms | 26 ms | B, A and the embedded branch each via index |
-| rare relatedParty name | 1.6 ms | 31 ms | same |
-| serviceType + state (~3 %) | 7.5 ms (1,713 matches) | 3.6 s (33,241 matches) | index (PG: both conditions in the GIN index, Oracle: one MVI + filter); the time is the page plus `count(*)` over all matches |
-| serviceType + state of the referenced service (~3 %) | 853 ms (857 matches) | 9.1 s (16,570 matches) | the referenced services are collected once (index), then joined to the candidates |
-| range `startDate.gte` | 132 ms (529 matches) | 1.9 s (10,890 matches) | no index → full scan (mainly for `count(*)`) |
-| no filter, page at the end | 5.3 ms | 312 ms | deferred join via PK index |
+| rare relatedParty name | 1.7 ms | 28 ms | same |
+| serviceType + state (~3 %) | 6.9 ms (1,713 matches) | 3.5 s (33,241 matches) | index (PG: both conditions in the GIN index, Oracle: one MVI + filter); the time is the page plus `count(*)` over all matches |
+| serviceType + state of the referenced service (~3 %) | 1.5 s (857 matches) | 7.9 s (16,570 matches) | the referenced services are collected once (index), then joined to the candidates |
+| range `startDate.gte` | 129 ms (529 matches) | 1.8 s (10,890 matches) | no index → full scan (mainly for `count(*)`) |
+| no filter, page at the end | 6.2 ms | 294 ms | deferred join via PK index |
 
 Notes:
 * Selective equality searches use the index and therefore scale logarithmically instead of linearly.
