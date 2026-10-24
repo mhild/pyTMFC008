@@ -1,0 +1,28 @@
+meta {
+  name: GET /service as reader (read is allowed)
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{tmfc008_base_url}}/service
+  body: none
+  auth: inherit
+}
+
+params:query {
+  limit: 1
+}
+
+script:pre-request {
+  if ((bru.getEnvVar('auth_mode') || 'none') === 'none') { bru.runner.skipRequest(); }
+}
+
+tests {
+  test("reader may read", function () { expect(res.status).to.be.oneOf([200, 206]); });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

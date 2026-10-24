@@ -12,12 +12,13 @@
 """  # noqa: E501
 
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from openapi_server.apis.events_subscription_api import router as EventsSubscriptionApiRouter
 from openapi_server.apis.health_api import router as HealthApiRouter
 from openapi_server.apis.service_api import router as ServiceApiRouter
+from openapi_server.security import require_by_method, require_read
 from openapi_server.services.validation import warm_up
 
 app = FastAPI(
@@ -27,8 +28,8 @@ app = FastAPI(
 )
 
 app.include_router(HealthApiRouter)
-app.include_router(EventsSubscriptionApiRouter)
-app.include_router(ServiceApiRouter)
+app.include_router(EventsSubscriptionApiRouter, dependencies=[Depends(require_read)])  # subscribing = reading events
+app.include_router(ServiceApiRouter, dependencies=[Depends(require_by_method)])
 warm_up()  # load the JSON schemas from the spec now, not on the first request
 
 

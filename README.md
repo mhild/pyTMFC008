@@ -149,6 +149,75 @@ The optional `query` selects events: `eventType=ServiceStateChangeEvent,ServiceD
 Delivery is best effort: one attempt per hub after the response, failures are logged (code: `openapi_server/services/events.py`).
 A production setup would need a transactional outbox with retries so no event is lost on a crash or an unreachable listener.
 
+## Authentication
+
+`AUTH_MODE` (`.env` or the shell, passed to the app by `docker-compose.yml`) selects how the API checks callers:
+
+| `AUTH_MODE` | Caller sends | Configuration |
+|---|---|---|
+| `none` (default) | nothing | - |
+| `basic` | HTTP Basic | `AUTH_BASIC_USERS=name:password:roles,...` |
+| `oauth2` | `Authorization: Bearer <JWT>` from an OpenID Connect / OAuth2 provider | `OAUTH2_ISSUER` (required), `OAUTH2_JWKS_URL`, `OAUTH2_AUDIENCE`, `OAUTH2_ROLES_CLAIM`, `OAUTH2_ROLE_READ`, `OAUTH2_ROLE_WRITE` |
+
+Two roles: `read` (all GETs, `POST`/`DELETE /hub`) and `write` (create, patch, delete a service; includes `read`).
+Without credentials the API answers 401 (with `WWW-Authenticate`), without the needed role 403, both in the TMF
+error format. `/livez` and `/readyz` are never protected. A wrong configuration (unknown mode, empty user list, no
+issuer) stops the app at start. Events are delivered to the callbacks unauthenticated and unsigned.
+
+**Basic:** `AUTH_BASIC_USERS='reader:s3cret:read,admin:pa55:read+write'` - users separated by `,`, roles by `+`; the
+password is plain text or `sha256:<hex>` (`name:sha256:<hex>:roles`); passwords must not contain `:` or `,`. Basic sends
+the password with every request: use it behind TLS only.
+
+**OAuth2:** the API is a *resource server*: it does not issue tokens, it verifies them - signature against the public
+keys of the provider (JWKS, cached), `iss`, `exp` and, if `OAUTH2_AUDIENCE` is set, `aud`. The roles are read from
+the claim `OAUTH2_ROLES_CLAIM` (dotted path, default `realm_access.roles` as Keycloak writes it; a space-separated
+string such as `scope` works too) and mapped from `OAUTH2_ROLE_READ` / `OAUTH2_ROLE_WRITE` (default `inventory-read` /
+`inventory-write`). Without `OAUTH2_JWKS_URL` the keys are found through `<issuer>/.well-known/openid-configuration`.
+
+### Keycloak as a test provider
+
+`docker compose --profile keycloak up -d keycloak` starts Keycloak (admin console http://localhost:8180, `admin` /
+`admin`) and imports the realm `tmf` from `keycloak/tmf-realm.json`:
+
+| | secret / password | roles |
+|---|---|---|
+| client `tmf-writer` (client credentials) | `writer-secret` | `inventory-read`, `inventory-write` |
+| client `tmf-reader` (client credentials) | `reader-secret` | `inventory-read` |
+| user `alice` (client `tmf-demo`, password grant) | `alice` | `inventory-read`, `inventory-write` |
+| user `bob` (client `tmf-demo`, password grant) | `bob` | `inventory-read` |
+
+Start the API against it:
+
+```bash
+AUTH_MODE=oauth2 \
+OAUTH2_ISSUER=http://localhost:8180/realms/tmf \
+OAUTH2_JWKS_URL=http://keycloak:8080/realms/tmf/protocol/openid-connect/certs \
+docker compose up -d app
+```
+
+Two addresses, one provider: the token names the issuer by the URL the token was requested at, and Keycloak is told to
+use `http://localhost:8180` (`KC_HOSTNAME`) whichever way it is reached. So the app compares `iss` with that public
+URL (`OAUTH2_ISSUER`) but fetches the keys over the compose network (`OAUTH2_JWKS_URL`).
+
+```bash
+TOKEN=$(curl -s http://localhost:8180/realms/tmf/protocol/openid-connect/token \
+  -d grant_type=client_credentials -d client_id=tmf-reader -d client_secret=reader-secret | jq -r .access_token)
+curl -s -H "Authorization: Bearer $TOKEN" 'http://localhost:8080/service?limit=1'          # 200/206
+curl -s -H "Authorization: Bearer $TOKEN" -X DELETE http://localhost:8080/service/<id>     # 403: no write role
+jq -R 'split(".")[1] | @base64d | fromjson' <<< "$TOKEN"                                   # iss, exp, realm_access.roles
+```
+
+Keycloak runs in development mode here (H2 database, HTTP): for trying things out, not for production. The JVM
+option `-XX:UseSVE=0` in the compose file works around a JDK 21 crash (SIGILL) on some arm64 hosts. Other providers
+work the same way: set the issuer, the JWKS URL and the claim that carries the roles.
+
+**Tests:** the pytest suite and the Bruno collection run in each mode. pytest takes credentials from the environment
+(`TMF_WRITER_BASIC=user:password`, `TMF_READER_BASIC=...`, or `TMF_TOKEN_URL` with `TMF_WRITER_CLIENT=id:secret` /
+`TMF_READER_CLIENT=...`); `test_auth.py` is skipped on an API without authentication. Bruno: the environments
+`compose-basic` and `compose-oauth2` set `auth_mode` and the credentials, `collection.bru` adds the header to every
+request (the folder `0 auth` checks 401 / 403, `0 health` shows that the probes stay open). The users of
+`compose-basic` match `AUTH_BASIC_USERS='writer:writer-secret:read+write,reader:reader-secret:read'`.
+
 ## Revision history
 
 With `HISTORY_ENABLED=true` (`.env`, default `false`) every write on the inventory keeps the version that was current
@@ -195,7 +264,7 @@ The integration tests are backend-neutral and run unchanged against both databas
 **Results:** [docs/test-report.md](docs/test-report.md): all test cases with their result per backend, the test environment
 (system, versions, data volume) as well as benchmark and execution plans. Generated by `scripts/test_report.py`
 (see section *Reproduce* in the report for the invocation).
-The Bruno collection is in `tests/TMFC008` (environments: `compose` for the app container of this stack on port 8080, `dev` for an API on the host; `bru run demo -r --env compose` with the Bruno CLI). Its folder `demo`
+The Bruno collection is in `tests/TMFC008` (environments: `compose` for the app container of this stack on port 8080, `compose-basic` / `compose-oauth2` when it runs with authentication, `dev` for an API on the host; `bru run demo -r --env compose` with the Bruno CLI). Its folder `demo`
 is a walk-through of the features with checked results: it creates its own services and searches them (attribute, OR,
 array element, operators, JSONPath, object values, `fields`, `sort`, paging), through references, changes them and
 shows the revision history and the event notifications of a hub subscription; the history requests are skipped when the API runs

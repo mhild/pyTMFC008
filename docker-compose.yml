@@ -51,6 +51,13 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       SQL_ECHO: ${SQL_ECHO:-false}
       HISTORY_ENABLED: ${HISTORY_ENABLED:-false}
+      # Authentication (README, *Authentication*): none | basic | oauth2
+      AUTH_MODE: ${AUTH_MODE:-none}
+      AUTH_BASIC_USERS: ${AUTH_BASIC_USERS:-}
+      OAUTH2_ISSUER: ${OAUTH2_ISSUER:-}
+      OAUTH2_JWKS_URL: ${OAUTH2_JWKS_URL:-}
+      OAUTH2_AUDIENCE: ${OAUTH2_AUDIENCE:-}
+      OAUTH2_ROLES_CLAIM: ${OAUTH2_ROLES_CLAIM:-realm_access.roles}
     extra_hosts:
       - "host.docker.internal:host-gateway"  # event callbacks to a listener on the host (Linux needs this)
     ports:
@@ -61,6 +68,31 @@ services:
       timeout: 5s
       retries: 30
       start_period: 30s
+
+  # Optional OAuth2 / OpenID Connect provider for AUTH_MODE=oauth2 (profile `keycloak`): the realm `tmf` is imported
+  # from keycloak/tmf-realm.json. Tokens carry the issuer http://localhost:8180/realms/tmf (KC_HOSTNAME) whichever
+  # way the caller reached Keycloak; the app fetches the signing keys from the internal address (OAUTH2_JWKS_URL).
+  keycloak:
+    profiles: ["keycloak"]
+    image: quay.io/keycloak/keycloak:26.0.7
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: http://localhost:8180
+      KC_HEALTH_ENABLED: "true"
+      JAVA_OPTS_APPEND: "-XX:UseSVE=0"  # JDK 21 crashes with SIGILL on some arm64 hosts (SVE)
+    volumes:
+      - ./keycloak/tmf-realm.json:/opt/keycloak/data/import/tmf-realm.json:ro
+    ports:
+      - "8180:8080"
+    healthcheck:
+      # the image has no curl: speak HTTP to the management port by hand
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
 
 volumes:
   postgres_data:

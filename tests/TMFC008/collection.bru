@@ -1,0 +1,28 @@
+script:pre-request {
+  // Authentication, chosen by the environment (variable auth_mode): none | basic | oauth2
+  //   basic:   auth_user / auth_password          (reader: reader_user / reader_password)
+  //   oauth2:  token_url, client_id / client_secret (reader: reader_client_id / reader_client_secret)
+  // bru.getVar('auth_as') = 'reader' makes the next requests run with the read-only identity (default: writer).
+  const mode = bru.getEnvVar('auth_mode') || 'none';
+  const who = bru.getVar('auth_as') || 'writer';
+  // reader_<name> for the read-only identity, otherwise <name> (basic: auth_user, auth_password)
+  const pick = (name, writerName) => (who === 'reader' && bru.getEnvVar('reader_' + name)) ? bru.getEnvVar('reader_' + name) : bru.getEnvVar(writerName || name);
+
+  if (mode === 'basic') {
+    const credentials = Buffer.from(pick('user', 'auth_user') + ':' + pick('password', 'auth_password')).toString('base64');
+    req.setHeader('Authorization', 'Basic ' + credentials);
+  } else if (mode === 'oauth2') {
+    const key = 'token_' + who;
+    if (!bru.getVar(key) || Date.now() > bru.getVar(key + '_expires')) {
+      const response = await require('axios').post(
+        bru.getEnvVar('token_url'),
+        Object.entries({ grant_type: 'client_credentials', client_id: pick('client_id'), client_secret: pick('client_secret') })
+          .map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&'),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      );
+      bru.setVar(key, response.data.access_token);
+      bru.setVar(key + '_expires', Date.now() + (response.data.expires_in - 30) * 1000);
+    }
+    req.setHeader('Authorization', 'Bearer ' + bru.getVar(key));
+  }
+}

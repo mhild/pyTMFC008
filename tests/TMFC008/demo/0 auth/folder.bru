@@ -1,0 +1,15 @@
+meta {
+  name: 0 auth
+  seq: 2
+}
+
+auth {
+  mode: inherit
+}
+
+docs {
+  Authentication and roles (API started with AUTH_MODE=basic or oauth2; the requests are skipped without). The
+  environment decides how the whole collection authenticates (`auth_mode`, see `collection.bru`): `compose-basic`,
+  `compose-oauth2` (needs the keycloak profile). Roles: `read` (GET, event subscriptions), `write` (create, change,
+  delete; includes read).
+}

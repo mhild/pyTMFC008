@@ -1,0 +1,28 @@
+meta {
+  name: DELETE /service as reader (403)
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{tmfc008_base_url}}/service/00000000-0000-0000-0000-000000000000
+  body: none
+  auth: inherit
+}
+
+script:pre-request {
+  if ((bru.getEnvVar('auth_mode') || 'none') === 'none') { bru.runner.skipRequest(); }
+}
+
+script:post-response {
+  bru.setVar('auth_as', 'writer');   // back to the full-access user
+}
+
+tests {
+  test("reader may not delete (checked before the id is looked up)", function () { expect(res.status).to.equal(403); });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

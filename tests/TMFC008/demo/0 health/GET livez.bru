@@ -10,6 +10,10 @@ get {
   auth: inherit
 }
 
+script:pre-request {
+  req.deleteHeader('Authorization');   // the probes are open, with or without credentials
+}
+
 tests {
   test("alive", function () {
     expect(res.status).to.equal(200);
