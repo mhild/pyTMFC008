@@ -196,7 +196,7 @@ def _pg_reference_document(ref: Ref, id_expr: str) -> str:
     return doc
 
 
-def _reference_sql(path: Path, ref: Ref, dialect: str, bind: str) -> Tuple[str, Dict]:
+def _reference_sql(path: Path, ref: Ref, dialect: str, bind: str, narrowed: bool) -> Tuple[str, Dict]:
     embedded_sql, binds = _exists_sql(embedded_variant(path), dialect, f"{bind}e", "s1.payload")
     target_sql, target_binds = _exists_sql(ref.target, dialect, f"{bind}t", "t2.payload")
     if dialect == "postgresql":
@@ -220,19 +220,25 @@ def _reference_sql(path: Path, ref: Ref, dialect: str, bind: str) -> Tuple[str, 
         sql = f"service.id = ANY(ARRAY({subquery}))"
     else:
         # Left to itself Oracle unnests the subquery into a correlated filter that probes the referenced
-        # services once per candidate row (minutes on 1M rows). ROWNUM keeps it a view that is evaluated once,
-        # HASH_SJ joins it to the candidates with a hash semi join instead of one index probe per result id.
-        sql = f"service.id IN (SELECT /*+ HASH_SJ */ id FROM ({subquery}) WHERE ROWNUM > 0)"
+        # services once per candidate row (minutes on 1M rows). ROWNUM keeps it a view that is evaluated once.
+        # If other conditions narrow the candidates, HASH_SJ joins the view to them with a hash semi join instead of
+        # one index probe per result id; without any, all services are candidates and the probes are the better plan
+        # (a hash semi join would read the whole primary key index).
+        hint = "/*+ HASH_SJ */ " if narrowed else ""
+        sql = f"service.id IN (SELECT {hint}id FROM ({subquery}) WHERE ROWNUM > 0)"
     return sql, {**binds, **target_binds, **join_binds}
 
 
-def render_condition(path: Path, dialect: str, index: int, column: str = "payload") -> TextClause:
+def render_condition(
+    path: Path, dialect: str, index: int, column: str = "payload", narrowed: bool = False
+) -> TextClause:
+    """`narrowed`: other conditions of the query restrict the candidate services (see _reference_sql)."""
     bind = f"q{index}"
     ref = single_ref(path)
     if ref is None:
         sql, binds = _exists_sql(path, dialect, bind, column)
     else:
-        sql, binds = _reference_sql(path, ref, dialect, bind)
+        sql, binds = _reference_sql(path, ref, dialect, bind, narrowed)
     return text(sql).bindparams(**binds)
 
 
@@ -266,4 +272,5 @@ def render_sort(sort_keys: List[SortKey], dialect: str, column: str = "service.p
 
 
 def render_conditions(paths: List[Path], dialect: str) -> List[TextClause]:
-    return [render_condition(p, dialect, i) for i, p in enumerate(paths)]
+    narrowed = any(single_ref(p) is None for p in paths)
+    return [render_condition(p, dialect, i, narrowed=narrowed) for i, p in enumerate(paths)]

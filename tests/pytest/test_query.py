@@ -7,6 +7,7 @@ from openapi_server.services.query.render import (
     oracle_json_path,
     pg_jsonpath,
     render_condition,
+    render_conditions,
     render_sort,
     uses_search_column,
 )
@@ -164,9 +165,7 @@ def test_jsonpath_and_attribute_syntax_resolve_alike():
 def test_reference_sql_joins_by_id(dialect):
     (path,) = parse_query_params(REL_PARAMS)
     sql = str(render_condition(path, dialect, 0))
-    prefix = (
-        "service.id = ANY(ARRAY(" if dialect == "postgresql" else "service.id IN (SELECT /*+ HASH_SJ */ id FROM ("
-    )
+    prefix = "service.id = ANY(ARRAY(" if dialect == "postgresql" else "service.id IN (SELECT id FROM ("
     assert sql.startswith(prefix + "SELECT s1.id FROM service s1 WHERE ")
     assert " UNION SELECT s2.id FROM service s2 JOIN service t2 ON " in sql
     assert "'x'" not in sql and '"x"' not in sql  # values are bound
@@ -175,6 +174,14 @@ def test_reference_sql_joins_by_id(dialect):
     else:
         assert "JSON_VALUE(t2.payload, '$.id') AS \"ref_id\"" in sql
         assert sql.endswith(" WHERE ROWNUM > 0)")  # evaluated once, not unnested into a correlated filter
+
+
+def test_oracle_reference_hash_semi_join_only_with_other_conditions():
+    (ref,) = parse_query_params(REL_PARAMS)
+    (other,) = parse_query_params([("state", "active")])
+    assert "HASH_SJ" not in str(render_conditions([ref], "oracle")[0])
+    assert "HASH_SJ" in str(render_conditions([other, ref], "oracle")[1])
+    assert "HASH_SJ" not in str(render_conditions([other, ref], "postgresql")[1])
 
 
 @pytest.mark.parametrize(
