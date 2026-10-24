@@ -29,6 +29,10 @@ making it **fast**.
    * If the attribute should also be searchable **through references** (`serviceRelationship.service.<path>`,
      `supportingService.<path>`), add the same index for those prefixes (`ix_svc_rel_<short>`, `ix_svc_sup_<short>`) –
      otherwise the "embedded by value" branch of a reference filter scans the table.
+   * With revision history (`service_history`, `includeHistory=true`) the attribute is searched there too: add the
+     same index on `service_history h (h.payload.<path>.string())` (`ix_hist_<short>`, see
+     `alembic/versions/e9b3d5f7a1c2_add_service_history.py`; not needed for the reference prefixes, history search
+     doesn't support filters through references) and check the plan with `includeHistory=true`.
    * Every value on the path must be scalar (or an array of scalars): Oracle requires `ERROR ON ERROR` for multivalue
      indexes, so a single object value makes the insert fail (`ORA-40456`). For paths that can hold objects (like
      characteristic values) copy them without objects into the `search` shadow column instead – see

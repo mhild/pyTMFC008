@@ -1,7 +1,7 @@
 import json
 from decimal import Decimal
 
-from sqlalchemy import Column, Uuid
+from sqlalchemy import Column, Integer, String, TIMESTAMP, Uuid
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase
@@ -62,6 +62,23 @@ class Service(Base):
 
     id = Column(Uuid, primary_key=True)  # uuid on PostgreSQL, CHAR(32) on Oracle
     payload = Column(JsonDocument, nullable=False)
+    # Revision of the current document; only maintained while history is enabled (NULL: not tracked yet).
+    # Kept out of the payload so the current version stays free of revision attributes.
+    revision = Column(Integer)
+    rev_start = Column(TIMESTAMP)  # UTC, when this revision became current
+
+
+class ServiceHistory(Base):
+    """Earlier revisions of a service (see services/history.py). Same document as in `service`, revision data aside."""
+
+    __tablename__ = "service_history"
+
+    id = Column(Uuid, primary_key=True)
+    revision = Column(Integer, primary_key=True)
+    payload = Column(JsonDocument, nullable=False)
+    rev_start = Column(TIMESTAMP)  # UTC; NULL: unknown (the revision predates the activation of history)
+    rev_end = Column(TIMESTAMP, nullable=False)
+    operation = Column(String(10), nullable=False)  # how the revision ended: "update" or "delete"
 
 
 class Hub(Base):

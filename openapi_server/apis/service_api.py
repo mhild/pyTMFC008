@@ -56,6 +56,10 @@ for _, name, _ in pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + "."):
 DEFAULT_LIMIT = 100
 MAX_LIMIT = 1000
 
+INCLUDE_HISTORY_DESCRIPTION = (
+    "true: include historised revisions (needs HISTORY_ENABLED); a historised revision carries a `revision` object. "
+    "Default false: current versions only"
+)
 FIELDS_QUERY = Query(None, description="Comma-separated properties to be provided in response")
 
 
@@ -152,6 +156,13 @@ async def get_services(
         description="JSONPath filter (TMF630), e.g. $.serviceCharacteristic[?(@.name=='mac' && @.value=='00:11:22:33:44:55')]. "
         "Any other query parameter is an attribute filter, e.g. serviceType=Cloud or relatedParty.partyOrPartyRole.name=Peter Meyer",
     ),
+    includeHistory: Optional[str] = Query(None, description=INCLUDE_HISTORY_DESCRIPTION),
+    revisionStartTimestamp: Optional[str] = Query(
+        None, description="With includeHistory=true: only revisions valid at or after this ISO 8601 timestamp"
+    ),
+    revisionEndTimestamp: Optional[str] = Query(
+        None, description="With includeHistory=true: only revisions valid at or before this ISO 8601 timestamp"
+    ),
     session: AsyncSession = Depends(get_db_session),
 ) -> List[Dict]:
     services, total = await list_services(request.query_params.multi_items(), session, offset, limit)
@@ -217,6 +228,8 @@ async def patch_service(
 async def get_service_endpoint(
     service_id: str,
     fields: Optional[str] = FIELDS_QUERY,
+    includeHistory: Optional[str] = Query(None, description=INCLUDE_HISTORY_DESCRIPTION),
+    revision: Optional[str] = Query(None, description="With includeHistory=true (required then): the revision to retrieve"),
     db_session: AsyncSession = Depends(get_db_session),
 ):
-    return project(await get_service(service_id, db_session), parse_fields(fields))
+    return project(await get_service(service_id, db_session, includeHistory, revision), parse_fields(fields))

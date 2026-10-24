@@ -235,7 +235,7 @@ def main():
     out.append("| Packages | " + ", ".join(f"{p} {metadata.version(p)}" for p in PACKAGES if _installed(p)) + " |")
     out += [
         "",
-        "For each test run the API ran as a separate uvicorn instance (one worker) on the same host as the databases (Docker).",
+        "For each test run the API ran as a separate uvicorn instance (one worker, `HISTORY_ENABLED=true`: the history tests are skipped without it) on the same host as the tests.",
     ]
 
     # one table per test module
@@ -293,8 +293,8 @@ def main():
         "export PG=postgresql+asyncpg://app:secret@localhost:5432/app_db",
         "export ORA='oracle+oracledb_async://app:secret@localhost:1521/?service_name=FREEPDB1'",
         "DATABASE_URL=$PG alembic upgrade head && DATABASE_URL=$ORA alembic upgrade head",
-        "DATABASE_URL=$PG  uvicorn openapi_server.main:app --port 8001 &",
-        "DATABASE_URL=$ORA uvicorn openapi_server.main:app --port 8002 &",
+        "HISTORY_ENABLED=true DATABASE_URL=$PG  uvicorn openapi_server.main:app --port 8001 &",
+        "HISTORY_ENABLED=true DATABASE_URL=$ORA uvicorn openapi_server.main:app --port 8002 &",
         "DATABASE_URL=${PG/+asyncpg/} python scripts/seed.py --count 50000 --truncate   # data for the performance measurement",
         "DATABASE_URL=${ORA/_async/} python scripts/seed.py --count 50000 --truncate",
         'python scripts/test_report.py --target "PostgreSQL|http://127.0.0.1:8001|$PG" --target "Oracle|http://127.0.0.1:8002|$ORA"',

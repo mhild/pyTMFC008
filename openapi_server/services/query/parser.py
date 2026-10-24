@@ -34,7 +34,9 @@ from .ast import (
 )
 from .references import resolve_references
 
-RESERVED_PARAMS = {"fields", "offset", "limit", "sort", "filter"}
+RESERVED_PARAMS = {
+    "fields", "offset", "limit", "sort", "filter", "includeHistory", "revisionStartTimestamp", "revisionEndTimestamp"
+}
 KEY_RE = re.compile(r"^[A-Za-z_@][A-Za-z0-9_@\-]*$")
 
 _SUFFIX_OPS = {"eq": "==", "ne": "!=", "gt": ">", "gte": ">=", "lt": "<", "lte": "<="}

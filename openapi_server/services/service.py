@@ -3,17 +3,18 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type
 
 import jsonpatch
 from fastapi import HTTPException
-from sqlalchemy import Select, func, select, text
+from sqlalchemy import TIMESTAMP, Select, cast, func, literal_column, null, or_, select, text, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from openapi_server.database.models import Base, Service
+from openapi_server.database.models import Base, Service, ServiceHistory
+from openapi_server.services import history
 from openapi_server.services.merge_patch import apply_merge_patch
 from openapi_server.services.query.parser import FilterError, parse_query_params, parse_sort
 from openapi_server.services.query.render import needs_join, render_conditions, render_sort
 from openapi_server.services.validation import first_error
 
 # Always returned, even when `fields` selects other attributes (TMF630)
-MANDATORY_FIELDS = ("id", "href", "@type")
+MANDATORY_FIELDS = ("id", "href", "@type", "revision")  # "revision": of a historised revision
 
 
 def parse_fields(fields: Optional[str]) -> Optional[Set[str]]:
@@ -61,23 +62,98 @@ async def create_service(payload: Dict, session: AsyncSession, base_url: str) ->
     service_id = uuid.uuid4()
     payload["id"] = str(service_id)
     payload["href"] = f"{base_url.rstrip('/')}/{service_id}"
-    session.add(Service(id=service_id, payload=payload))
+    service = Service(id=service_id, payload=payload)
+    history.start_revision(service, history.now())
+    session.add(service)
     await session.commit()
     return payload
 
 
-async def get_service(service_id: str, session: AsyncSession) -> Dict:
-    return (await _load(session, service_id)).payload
+async def get_service(
+    service_id: str, session: AsyncSession, include_history: Optional[str] = None, revision: Optional[str] = None
+) -> Dict:
+    """The current document; with includeHistory=true the given revision (current or historised)."""
+    number = history.by_id_revision(include_history, revision)
+    if number is None:
+        return (await _load(session, service_id)).payload
+    # a deleted service has no current document, but its revisions stay retrievable
+    try:
+        parsed_id = uuid.UUID(service_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Service not found")
+    row = await session.get(ServiceHistory, (parsed_id, number))
+    if row is not None:
+        return history.with_revision(row.payload, row)
+    current = (await session.execute(select(Service).where(Service.id == parsed_id))).scalar()
+    if current is None or number != (current.revision or 1):
+        raise HTTPException(status_code=404, detail=f"Revision {number} of the Service not found")
+    return current.payload  # the current revision carries no revision attributes
+
+
+def _all_revisions(dialect: str):
+    """Current services and historised revisions as one derived table named `service`, so that the rendered
+    conditions (which address `payload` / `search`) apply to both. Current rows have is_history 0."""
+    search = dialect == "oracle"  # the shadow column, see the Oracle migrations
+    current = select(
+        Service.id,
+        Service.payload,
+        *([literal_column("service.search").label("search")] if search else []),
+        literal_column("0").label("is_history"),
+        func.coalesce(Service.revision, 0).label("revision"),
+        Service.rev_start,
+        cast(null(), TIMESTAMP).label("rev_end"),
+    )
+    past = select(
+        ServiceHistory.id,
+        ServiceHistory.payload,
+        *([literal_column("service_history.search").label("search")] if search else []),
+        literal_column("1").label("is_history"),
+        ServiceHistory.revision,
+        ServiceHistory.rev_start,
+        ServiceHistory.rev_end,
+    )
+    return union_all(current, past).subquery("service")
+
+
+def _history_statements(conditions, order_by_keys, rng: history.Range, dialect: str, offset: int, limit: int):
+    rows = _all_revisions(dialect)
+    where = list(conditions)
+    # revisions valid at some point of [start, end]; an open end / unknown start does not exclude
+    if rng.start is not None:
+        where.append(or_(rows.c.rev_end.is_(None), rows.c.rev_end >= rng.start))
+    if rng.end is not None:
+        where.append(or_(rows.c.rev_start.is_(None), rows.c.rev_start <= rng.end))
+    order_by = order_by_keys + [rows.c.id, rows.c.is_history.desc(), rows.c.revision]
+    count_stmt = select(func.count()).select_from(rows).where(*where)
+    # No deferred join here (as in list_statements): joining the ids back to a UNION ALL of both tables scans them
+    # in full. The sort keeps only the requested page (top-N), which is enough for a rarely used search.
+    page_stmt = (
+        select(rows.c.payload, rows.c.is_history, rows.c.revision, rows.c.rev_start, rows.c.rev_end)
+        .where(*where)
+        .order_by(*order_by)
+        .offset(offset)
+        .limit(limit)
+    )
+    return count_stmt, page_stmt
 
 
 def list_statements(
     query_params: Iterable[Tuple[str, str]], dialect: str, offset: int, limit: int
 ) -> Tuple[Select, Select, bool]:
-    """(count statement, page statement, joins other services?) for a list request; raises FilterError."""
+    """(count statement, page statement, joins other services?) for a list request; raises FilterError.
+
+    With includeHistory=true the page statement returns rows (payload, is_history, revision, rev_start, rev_end)."""
     query_params = list(query_params)
     paths = parse_query_params(query_params)
-    order_by = render_sort(parse_sort(v for k, v in query_params if k == "sort"), dialect) + [Service.id]
+    sort_keys = parse_sort(v for k, v in query_params if k == "sort")
     conditions = render_conditions(paths, dialect)
+    rng = history.list_range(query_params)
+    if rng is not None:
+        if needs_join(paths):
+            raise FilterError("Filters through references are not supported with includeHistory=true")
+        count_stmt, page_stmt = _history_statements(conditions, render_sort(sort_keys, dialect), rng, dialect, offset, limit)
+        return count_stmt, page_stmt, False
+    order_by = render_sort(sort_keys, dialect) + [Service.id]
     count_stmt = select(func.count()).select_from(Service).where(*conditions)
     # Deferred join: sort and skip only the (indexed) ids, then load the documents
     # of the requested page - instead of sorting whole documents for deep offsets.
@@ -114,8 +190,10 @@ async def list_services(
     if joins:
         await disable_parallel_query(session)
     total = (await session.execute(count_stmt)).scalar_one()
-    rows = (await session.execute(page_stmt)).scalars().all()
-    return list(rows), total
+    result = await session.execute(page_stmt)
+    if "is_history" not in result.keys():
+        return list(result.scalars().all()), total
+    return [history.with_revision(row.payload, row) if row.is_history else row.payload for row in result], total
 
 
 async def patch_service(
@@ -145,6 +223,10 @@ async def patch_service(
     # id and href are owned by the server
     new_doc["id"], new_doc["href"] = current["id"], current.get("href")
     validate(new_doc, "Service")
+    if new_doc != current:
+        archived = history.archive(db_service, history.UPDATE, history.now())
+        if archived is not None:
+            session.add(archived)
     db_service.payload = new_doc
     await session.commit()
     return current, new_doc
@@ -153,6 +235,9 @@ async def patch_service(
 async def delete_service(service_id: str, session: AsyncSession) -> Dict:
     """Deletes the service and returns its last document."""
     db_service = await _load(session, service_id)
+    archived = history.archive(db_service, history.DELETE, history.now())
+    if archived is not None:
+        session.add(archived)
     await session.delete(db_service)
     await session.commit()
     return db_service.payload
