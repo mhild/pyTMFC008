@@ -1,4 +1,4 @@
-"""Run the pytest suite against one or more running API instances and write a Markdown report.
+"""Run the pytest suite and the Bruno collection against one or more running API instances and write a Markdown report.
 
     python scripts/test_report.py \\
         --target "PostgreSQL|http://127.0.0.1:8001|postgresql+asyncpg://app:secret@localhost:5432/app_db" \\
@@ -6,6 +6,8 @@
         --output docs/test-report.md
 
 Each target is "label|API base URL|DATABASE_URL" (the database URL is only used to read the server version).
+The Bruno collection (tests/TMFC008, folder `demo`) runs with the Bruno CLI (`bru`) if it is installed; for its event
+requests the script starts scripts/event_listener.py on port 9099 (the API has to reach it as 127.0.0.1).
 """
 import argparse
 import ast
@@ -16,12 +18,16 @@ import platform
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.request
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from importlib import metadata
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 TEST_DIR = os.path.join(ROOT, "tests", "pytest")
+BRUNO_DIR = os.path.join(ROOT, "tests", "TMFC008")
+LISTENER_PORT = 9099
 PACKAGES = ["fastapi", "uvicorn", "pydantic", "SQLAlchemy", "alembic", "asyncpg", "oracledb", "cryptography", "httpx", "pytest"]
 STATUS_ICON = {"passed": "✅ passed", "failed": "❌ failed", "error": "❌ error", "skipped": "⏭️ skipped"}
 
@@ -139,6 +145,73 @@ def run_pytest(base_url: str):
     return results, summary
 
 
+# --------------------------------------------------------------------------- #
+# Bruno collection
+
+def bruno_version() -> str:
+    return sh("bru", "--version")
+
+
+class EventListener:
+    """scripts/event_listener.py for the event requests of the collection (an already running one is used as is)."""
+
+    def __init__(self):
+        self.proc = None
+
+    def _up(self) -> bool:
+        try:
+            urllib.request.urlopen(f"http://127.0.0.1:{LISTENER_PORT}/events", timeout=1).close()
+            return True
+        except OSError:
+            return False
+
+    def __enter__(self):
+        if not self._up():
+            self.proc = subprocess.Popen(
+                [sys.executable, os.path.join(ROOT, "scripts", "event_listener.py"), "--port", str(LISTENER_PORT)],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            for _ in range(50):
+                if self._up():
+                    break
+                time.sleep(0.1)
+        return self
+
+    def __exit__(self, *exc):
+        if self.proc:
+            self.proc.terminate()
+            self.proc.wait()
+
+
+def run_bruno(base_url: str):
+    """-> ({request path: (status, seconds, [(test, passed, message)])}, summary line); None without the Bruno CLI"""
+    with tempfile.TemporaryDirectory() as tmp:
+        report = os.path.join(tmp, "bruno.json")
+        proc = subprocess.run(
+            ["bru", "run", "demo", "-r", "--env", "dev", "--env-var", f"tmfc008_base_url={base_url}",
+             "--reporter-json", report],
+            capture_output=True, text=True, cwd=BRUNO_DIR,
+        )
+        if not os.path.exists(report):
+            return OrderedDict(), (proc.stderr.strip().splitlines() or ["no report"])[-1][:160]
+        import json
+        with open(report) as f:
+            data = json.load(f)
+    results = OrderedDict()
+    passed = failed = skipped = tests = 0
+    for item in data[0]["results"]:
+        checks = [(t["description"], t["status"] == "pass", (t.get("error") or "").splitlines()[0][:160] if t.get("error") else "")
+                  for t in item.get("testResults", [])]
+        status = "skipped" if item.get("skipped") else ("passed" if item["status"] == "pass" and all(c[1] for c in checks) else "failed")
+        results[item["path"]] = (status, float(item.get("runDuration") or 0), checks, item.get("name", ""))
+        passed += status == "passed"
+        failed += status == "failed"
+        skipped += status == "skipped"
+        tests += len(checks)
+    summary = f"{passed} passed, {failed} failed, {skipped} skipped ({len(results)} requests, {tests} checks)"
+    return results, summary
+
+
 def test_levels():
     """{module: {test function: "API" | "Unit"}}: API if the test (directly or via a fixture) uses the HTTP `client`."""
     result = {}
@@ -196,14 +269,20 @@ def main():
     parser.add_argument("--target", action="append", required=True, help="label|API base URL|DATABASE_URL")
     parser.add_argument("--output", default=os.path.join(ROOT, "docs", "test-report.md"))
     parser.add_argument("--bench-runs", type=int, default=30, help="requests per benchmark query (0: no benchmark)")
+    parser.add_argument("--no-bruno", action="store_true", help="skip the Bruno collection")
     args = parser.parse_args()
     targets = [t.split("|", 2) for t in args.target]
 
-    runs, versions, benches = [], [], []
+    runs, versions, benches, brunos = [], [], [], []
     for label, base_url, db_url in targets:
         print(f"Running tests against {label} ({base_url}) ...", file=sys.stderr)
         runs.append(run_pytest(base_url))
         versions.append(asyncio.run(database_version(db_url)))
+    if bruno_version() and not args.no_bruno:
+        with EventListener():
+            for label, base_url, _ in targets:
+                print(f"Running the Bruno collection against {label} ...", file=sys.stderr)
+                brunos.append(run_bruno(base_url))
     for label, base_url, db_url in targets if args.bench_runs else []:
         print(f"Running benchmark against {label} ...", file=sys.stderr)
         benches.append((label, run_bench(base_url, db_url, args.bench_runs)))
@@ -224,6 +303,10 @@ def main():
     ]
     for (label, base_url, _), (_, summary) in zip(targets, runs):
         out.append(f"| {label} | `{base_url}` | {md_escape(summary)} |")
+    if brunos:
+        out += ["", "Bruno collection (`demo`):", "", "| Backend | Result |", "|---|---|"]
+        for (label, _, _), (_, summary) in zip(targets, brunos):
+            out.append(f"| {label} | {md_escape(summary)} |")
 
     out += ["", "## Test environment", "", "| | |", "|---|---|"]
     out += [
@@ -233,6 +316,8 @@ def main():
         f"| Memory | {memory_info()} |",
         f"| Python | {platform.python_version()} ({platform.python_implementation()}) |",
     ]
+    if brunos:
+        out.append(f"| Bruno CLI | {bruno_version()} |")
     for label, version in zip(labels, versions):
         out.append(f"| Database {label} | {md_escape(version)} |")
     for image, status in container_images():
@@ -272,6 +357,30 @@ def main():
             out.append(f"| `{md_escape(test_id)}` | {level_of[(mod, test_id)]} | {md_escape(describe(func, funcs))} | " + " | ".join(cells) + " |")
         out.append("")
 
+    if brunos:
+        paths = list(OrderedDict.fromkeys(p for results, _ in brunos for p in results))
+        out += [
+            "## Bruno collection", "",
+            "`tests/TMFC008`, folder `demo`: a walk-through of the features with checked results, run with the Bruno CLI "
+            "(`bru run demo -r --env dev`) against the same API instances as the pytest suite. The requests create their own "
+            "services (`serviceType` `Demo-<run>`) and delete them again. Skipped: the folder `0 auth` (the API runs without "
+            "`AUTH_MODE`).", "",
+        ]
+        for folder in OrderedDict.fromkeys(p.split("/")[1] for p in paths):
+            out += [f"### {folder}", "", "| Request | Checks | " + " | ".join(labels) + " |", "|---|---|" + "---|" * len(labels)]
+            for path in (p for p in paths if p.split("/")[1] == folder):
+                cells, names = [], []
+                for results, _ in brunos:
+                    status, seconds, checks, name = results.get(path, ("–", 0.0, [], ""))
+                    names = names or [name]
+                    names += [c[0] for c in checks if c[0] not in names]
+                    failing = [f"{c[0]}: {c[2]}" for c in checks if not c[1]]
+                    cell = STATUS_ICON.get(status, status) + (f" ({duration(seconds)})" if status not in ("–", "skipped") else "")
+                    cells.append(cell + "".join(f"<br>{md_escape(f)}" for f in failing))
+                label = md_escape(names[0])
+                out.append(f"| {label} | {md_escape('; '.join(names[1:]))} | " + " | ".join(cells) + " |")
+            out.append("")
+
     if benches:
         out += [
             "## Performance",
@@ -290,7 +399,8 @@ def main():
     out += [
         "## Not included",
         "",
-        "* The Bruno collection (`tests/TMFC008`) is not part of this report (Bruno CLI not installed in the devcontainer).",
+        "* The authentication modes `basic` and `oauth2`: the APIs run with `AUTH_MODE=none`, so `test_auth.py` and the Bruno folder `0 auth` are skipped (see the README, *Authentication*, for running the tests in these modes).",
+        "* The TM Forum conformance test kit (`ctk/run-api-ctk.sh`), see `ctk/README.md`.",
         "",
         "## Reproduce",
         "",
@@ -303,6 +413,7 @@ def main():
         "HISTORY_ENABLED=true DATABASE_URL=$ORA uvicorn openapi_server.main:app --port 8002 &",
         "DATABASE_URL=${PG/+asyncpg/} python scripts/seed.py --count 50000 --truncate   # data for the performance measurement",
         "DATABASE_URL=${ORA/_async/} python scripts/seed.py --count 50000 --truncate",
+        "npm install -g @usebruno/cli@4.3.0   # once, for the Bruno collection (the devcontainer does it)",
         'python scripts/test_report.py --target "PostgreSQL|http://127.0.0.1:8001|$PG" --target "Oracle|http://127.0.0.1:8002|$ORA"',
         "```",
         "",
