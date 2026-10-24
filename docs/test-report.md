@@ -1,24 +1,24 @@
 # Test report
 
-Generated on 2026-10-24 14:02 UTC by `scripts/test_report.py`. To regenerate, see [Reproduce](#reproduce).
+Generated on 2026-10-24 14:20 UTC by `scripts/test_report.py`. To regenerate, see [Reproduce](#reproduce).
 
 ## Result
 
 | Backend | API | Result |
 |---|---|---|
-| PostgreSQL | `http://127.0.0.1:8001` | 156 passed, 1 skipped in 7.45s |
-| Oracle | `http://127.0.0.1:8003` | 156 passed, 1 skipped in 53.58s |
+| PostgreSQL | `http://127.0.0.1:8001` | 156 passed, 1 skipped in 3.77s |
+| Oracle | `http://127.0.0.1:8003` | 156 passed, 1 skipped in 29.69s |
 
 ## Test environment
 
 | | |
 |---|---|
-| Code version | `main` @ `448c729` |
+| Code version | `main` @ `22d2759` |
 | Operating system | Debian GNU/Linux 13 (trixie) (Kernel 6.12.13-200.fc41.aarch64, aarch64) |
 | CPU | Apple (aarch64, model name not exposed to the VM), 4 CPUs |
 | Memory | 7.7 GiB |
 | Python | 3.12.15 (CPython) |
-| Database PostgreSQL | PostgreSQL 16.15 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit – 50,000 services in table |
+| Database PostgreSQL | PostgreSQL 16.15 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit – 50,001 services in table |
 | Database Oracle | Oracle AI Database 26ai Free Release 23.26.3.0.0 - Develop, Learn, and Run for Free Version 23.26.3.0.0 – 1,000,000 services in table |
 | Container | `gvenzl/oracle-free:23-slim` (Up 4 hours (healthy)) |
 | Container | `postgres:16-alpine` (Up 4 hours (healthy)) |
@@ -43,44 +43,44 @@ Every run uses a unique marker so the tests also work on a pre-filled database.
 
 | Test | Level | Description | PostgreSQL | Oracle |
 |---|---|---|---|---|
-| `test_create_returns_resource` | API | create returns resource | ✅ passed (34 ms) | ✅ passed (629 ms) |
-| `test_retrieve` | API | retrieve | ✅ passed (2 ms) | ✅ passed (41 ms) |
-| `test_retrieve_with_fields` | API | retrieve with fields | ✅ passed (1 ms) | ✅ passed (114 ms) |
-| `test_retrieve_unknown_and_invalid_id` | API | retrieve unknown and invalid id | ✅ passed (2 ms) | ✅ passed (36 ms) |
-| `test_attribute_filter` | API | attribute filter | ✅ passed (8 ms) | ✅ passed (219 ms) |
-| `test_attribute_filter_dotted_path` | API | attribute filter dotted path | ✅ passed (2 ms) | ✅ passed (60 ms) |
-| `test_attribute_filter_number` | API | attribute filter number | ✅ passed (2 ms) | ✅ passed (71 ms) |
-| `test_attribute_filter_operators` | API | attribute filter operators | ✅ passed (6 ms) | ✅ passed (280 ms) |
-| `test_jsonpath_filter_characteristic` | API | The search the PoC is about: characteristic name AND value in the same array element. | ✅ passed (2 ms) | ✅ passed (57 ms) |
-| `test_jsonpath_filter_does_not_mix_array_elements` | API | jsonpath filter does not mix array elements | ✅ passed (2 ms) | ✅ passed (36 ms) |
-| `test_jsonpath_filter_related_party` | API | jsonpath filter related party | ✅ passed (2 ms) | ✅ passed (68 ms) |
-| `test_quotes_in_values_are_data_not_syntax` | API | quotes in values are data not syntax | ✅ passed (4 ms) | ✅ passed (213 ms) |
-| `test_invalid_filter_is_bad_request` | API | invalid filter is bad request | ✅ passed (1 ms) | ✅ passed (6 ms) |
-| `test_list_fields` | API | list fields | ✅ passed (2 ms) | ✅ passed (44 ms) |
-| `test_pagination` | API | pagination | ✅ passed (4 ms) | ✅ passed (104 ms) |
-| `test_merge_patch` | API | merge patch | ✅ passed (7 ms) | ✅ passed (757 ms) |
-| `test_json_patch` | API | json patch | ✅ passed (3 ms) | ✅ passed (204 ms) |
-| `test_patch_cannot_change_id` | API | patch cannot change id | ✅ passed (2 ms) | ✅ passed (37 ms) |
-| `test_patch_errors` | API | patch errors | ✅ passed (2 ms) | ✅ passed (64 ms) |
-| `test_delete` | API | delete | ✅ passed (7 ms) | ✅ passed (230 ms) |
-| `test_create_rejects_invalid_service[change0-$.state]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (2 ms) |
-| `test_create_rejects_invalid_service[change1-$.startDate]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (1 ms) |
+| `test_create_returns_resource` | API | create returns resource | ✅ passed (35 ms) | ✅ passed (515 ms) |
+| `test_retrieve` | API | retrieve | ✅ passed (2 ms) | ✅ passed (24 ms) |
+| `test_retrieve_with_fields` | API | retrieve with fields | ✅ passed (1 ms) | ✅ passed (30 ms) |
+| `test_retrieve_unknown_and_invalid_id` | API | retrieve unknown and invalid id | ✅ passed (1 ms) | ✅ passed (24 ms) |
+| `test_attribute_filter` | API | attribute filter | ✅ passed (7 ms) | ✅ passed (199 ms) |
+| `test_attribute_filter_dotted_path` | API | attribute filter dotted path | ✅ passed (2 ms) | ✅ passed (36 ms) |
+| `test_attribute_filter_number` | API | attribute filter number | ✅ passed (2 ms) | ✅ passed (38 ms) |
+| `test_attribute_filter_operators` | API | attribute filter operators | ✅ passed (6 ms) | ✅ passed (95 ms) |
+| `test_jsonpath_filter_characteristic` | API | The search the PoC is about: characteristic name AND value in the same array element. | ✅ passed (2 ms) | ✅ passed (33 ms) |
+| `test_jsonpath_filter_does_not_mix_array_elements` | API | jsonpath filter does not mix array elements | ✅ passed (2 ms) | ✅ passed (43 ms) |
+| `test_jsonpath_filter_related_party` | API | jsonpath filter related party | ✅ passed (2 ms) | ✅ passed (33 ms) |
+| `test_quotes_in_values_are_data_not_syntax` | API | quotes in values are data not syntax | ✅ passed (3 ms) | ✅ passed (70 ms) |
+| `test_invalid_filter_is_bad_request` | API | invalid filter is bad request | ✅ passed (1 ms) | ✅ passed (1 ms) |
+| `test_list_fields` | API | list fields | ✅ passed (2 ms) | ✅ passed (129 ms) |
+| `test_pagination` | API | pagination | ✅ passed (3 ms) | ✅ passed (76 ms) |
+| `test_merge_patch` | API | merge patch | ✅ passed (7 ms) | ✅ passed (136 ms) |
+| `test_json_patch` | API | json patch | ✅ passed (3 ms) | ✅ passed (102 ms) |
+| `test_patch_cannot_change_id` | API | patch cannot change id | ✅ passed (2 ms) | ✅ passed (35 ms) |
+| `test_patch_errors` | API | patch errors | ✅ passed (2 ms) | ✅ passed (168 ms) |
+| `test_delete` | API | delete | ✅ passed (6 ms) | ✅ passed (273 ms) |
+| `test_create_rejects_invalid_service[change0-$.state]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (5 ms) |
+| `test_create_rejects_invalid_service[change1-$.startDate]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (3 ms) |
 | `test_create_rejects_invalid_service[change2-$.isStateful]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (2 ms) |
-| `test_create_rejects_invalid_service[change3-'serviceSpecification' is a required property]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_create_rejects_invalid_service[change4-$.relatedParty[0].partyOrPartyRole]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_create_accepts_spec_example` | API | create accepts spec example | ✅ passed (199 ms) | ✅ passed (417 ms) |
-| `test_patch_must_keep_the_service_valid` | API | patch must keep the service valid | ✅ passed (5 ms) | ✅ passed (273 ms) |
-| `test_scalar_value_next_to_an_object_value` | API | scalar value next to an object value | ✅ passed (8 ms) | ✅ passed (268 ms) |
-| `test_scalar_in_an_array_with_objects` | API | scalar in an array with objects | ✅ passed (2 ms) | ✅ passed (60 ms) |
-| `test_filter_inside_an_object_value` | API | filter inside an object value | ✅ passed (3 ms) | ✅ passed (11547 ms) |
-| `test_patch_scalar_value_to_object` | API | patch scalar value to object | ✅ passed (9 ms) | ✅ passed (10765 ms) |
-| `test_sort_numbers_numerically_missing_values_last` | API | sort numbers numerically missing values last | ✅ passed (12 ms) | ✅ passed (459 ms) |
-| `test_sort_by_several_attributes` | API | sort by several attributes | ✅ passed (5 ms) | ✅ passed (116 ms) |
-| `test_sort_with_pagination` | API | sort with pagination | ✅ passed (2 ms) | ✅ passed (68 ms) |
-| `test_invalid_sort_is_bad_request[na'me]` | API | invalid sort is bad request | ✅ passed (1 ms) | ✅ passed (2 ms) |
+| `test_create_rejects_invalid_service[change3-'serviceSpecification' is a required property]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (2 ms) |
+| `test_create_rejects_invalid_service[change4-$.relatedParty[0].partyOrPartyRole]` | API | create rejects invalid service | ✅ passed (1 ms) | ✅ passed (2 ms) |
+| `test_create_accepts_spec_example` | API | create accepts spec example | ✅ passed (202 ms) | ✅ passed (421 ms) |
+| `test_patch_must_keep_the_service_valid` | API | patch must keep the service valid | ✅ passed (5 ms) | ✅ passed (100 ms) |
+| `test_scalar_value_next_to_an_object_value` | API | scalar value next to an object value | ✅ passed (7 ms) | ✅ passed (256 ms) |
+| `test_scalar_in_an_array_with_objects` | API | scalar in an array with objects | ✅ passed (2 ms) | ✅ passed (43 ms) |
+| `test_filter_inside_an_object_value` | API | filter inside an object value | ✅ passed (3 ms) | ✅ passed (89 ms) |
+| `test_patch_scalar_value_to_object` | API | patch scalar value to object | ✅ passed (9 ms) | ✅ passed (267 ms) |
+| `test_sort_numbers_numerically_missing_values_last` | API | sort numbers numerically missing values last | ✅ passed (12 ms) | ✅ passed (423 ms) |
+| `test_sort_by_several_attributes` | API | sort by several attributes | ✅ passed (4 ms) | ✅ passed (83 ms) |
+| `test_sort_with_pagination` | API | sort with pagination | ✅ passed (2 ms) | ✅ passed (139 ms) |
+| `test_invalid_sort_is_bad_request[na'me]` | API | invalid sort is bad request | ✅ passed (1 ms) | ✅ passed (3 ms) |
 | `test_invalid_sort_is_bad_request[a..b]` | API | invalid sort is bad request | ✅ passed (1 ms) | ✅ passed (2 ms) |
 | `test_invalid_sort_is_bad_request[-]` | API | invalid sort is bad request | ✅ passed (1 ms) | ✅ passed (2 ms) |
-| `test_invalid_sort_is_bad_request[]` | API | invalid sort is bad request | ✅ passed (17 ms) | ✅ passed (869 ms) |
+| `test_invalid_sort_is_bad_request[]` | API | invalid sort is bad request | ✅ passed (22 ms) | ✅ passed (762 ms) |
 
 ### `test_events.py`
 
@@ -94,13 +94,13 @@ API runs in a container).
 
 | Test | Level | Description | PostgreSQL | Oracle |
 |---|---|---|---|---|
-| `test_hub_lifecycle` | API | hub lifecycle | ✅ passed (6 ms) | ✅ passed (196 ms) |
-| `test_invalid_hub_is_bad_request[body0]` | API | invalid hub is bad request | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_invalid_hub_is_bad_request[body1]` | API | invalid hub is bad request | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
-| `test_invalid_hub_is_bad_request[body2]` | API | invalid hub is bad request | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
-| `test_service_lifecycle_events` | API | service lifecycle events | ✅ passed (114 ms) | ✅ passed (744 ms) |
-| `test_hub_query_selects_event_types` | API | hub query selects event types | ✅ passed (591 ms) | ✅ passed (1090 ms) |
-| `test_no_events_after_hub_deletion` | API | no events after hub deletion | ✅ passed (1430 ms) | ✅ passed (1704 ms) |
+| `test_hub_lifecycle` | API | hub lifecycle | ✅ passed (7 ms) | ✅ passed (289 ms) |
+| `test_invalid_hub_is_bad_request[body0]` | API | invalid hub is bad request | ✅ passed (1 ms) | ✅ passed (3 ms) |
+| `test_invalid_hub_is_bad_request[body1]` | API | invalid hub is bad request | ✅ passed (< 1 ms) | ✅ passed (2 ms) |
+| `test_invalid_hub_is_bad_request[body2]` | API | invalid hub is bad request | ✅ passed (< 1 ms) | ✅ passed (2 ms) |
+| `test_service_lifecycle_events` | API | service lifecycle events | ✅ passed (114 ms) | ✅ passed (643 ms) |
+| `test_hub_query_selects_event_types` | API | hub query selects event types | ✅ passed (597 ms) | ✅ passed (1051 ms) |
+| `test_no_events_after_hub_deletion` | API | no events after hub deletion | ✅ passed (1425 ms) | ✅ passed (1346 ms) |
 
 ### `test_history.py`
 
@@ -112,26 +112,26 @@ The tests that need history skip when the API runs without it (the disabled beha
 
 | Test | Level | Description | PostgreSQL | Oracle |
 |---|---|---|---|---|
-| `test_disabled_rejects_include_history` | API | disabled rejects include history | ⏭️ skipped (20 ms)<br>API runs with HISTORY_ENABLED | ⏭️ skipped (1713 ms)<br>API runs with HISTORY_ENABLED |
-| `test_current_version_is_clean` | API | current version is clean | ✅ passed (17 ms) | ✅ passed (367 ms) |
-| `test_list_with_history` | API | list with history | ✅ passed (16 ms) | ✅ passed (437 ms) |
-| `test_list_without_include_history_is_current_only` | API | list without include history is current only | ✅ passed (15 ms) | ✅ passed (351 ms) |
-| `test_filters_apply_to_each_revision` | API | filters apply to each revision | ✅ passed (20 ms) | ✅ passed (663 ms) |
-| `test_count_paging_and_sort_include_revisions` | API | count paging and sort include revisions | ✅ passed (86 ms) | ✅ passed (519 ms) |
-| `test_fields_keep_the_revision` | API | fields keep the revision | ✅ passed (12 ms) | ✅ passed (317 ms) |
-| `test_timestamp_range` | API | timestamp range | ✅ passed (24 ms) | ✅ passed (735 ms) |
-| `test_unchanged_patch_creates_no_revision` | API | unchanged patch creates no revision | ✅ passed (13 ms) | ✅ passed (336 ms) |
-| `test_retrieve_a_revision` | API | retrieve a revision | ✅ passed (12 ms) | ✅ passed (431 ms) |
-| `test_retrieve_a_revision_needs_a_valid_combination[params0-400]` | API | retrieve a revision needs a valid combination | ✅ passed (9 ms) | ✅ passed (334 ms) |
-| `test_retrieve_a_revision_needs_a_valid_combination[params1-400]` | API | retrieve a revision needs a valid combination | ✅ passed (9 ms) | ✅ passed (284 ms) |
-| `test_retrieve_a_revision_needs_a_valid_combination[params2-400]` | API | retrieve a revision needs a valid combination | ✅ passed (9 ms) | ✅ passed (372 ms) |
-| `test_retrieve_a_revision_needs_a_valid_combination[params3-400]` | API | retrieve a revision needs a valid combination | ✅ passed (9 ms) | ✅ passed (376 ms) |
-| `test_retrieve_a_revision_needs_a_valid_combination[params4-400]` | API | retrieve a revision needs a valid combination | ✅ passed (9 ms) | ✅ passed (271 ms) |
-| `test_retrieve_a_revision_needs_a_valid_combination[params5-400]` | API | retrieve a revision needs a valid combination | ✅ passed (9 ms) | ✅ passed (375 ms) |
-| `test_retrieve_a_revision_needs_a_valid_combination[params6-404]` | API | retrieve a revision needs a valid combination | ✅ passed (9 ms) | ✅ passed (427 ms) |
-| `test_invalid_list_parameters` | API | invalid list parameters | ✅ passed (2 ms) | ✅ passed (6 ms) |
-| `test_delete_keeps_the_revisions` | API | delete keeps the revisions | ✅ passed (12 ms) | ✅ passed (448 ms) |
-| `test_new_service_has_no_history_yet` | API | new service has no history yet | ✅ passed (8 ms) | ✅ passed (189 ms) |
+| `test_disabled_rejects_include_history` | API | disabled rejects include history | ⏭️ skipped (9 ms)<br>API runs with HISTORY_ENABLED | ⏭️ skipped (2359 ms)<br>API runs with HISTORY_ENABLED |
+| `test_current_version_is_clean` | API | current version is clean | ✅ passed (13 ms) | ✅ passed (473 ms) |
+| `test_list_with_history` | API | list with history | ✅ passed (12 ms) | ✅ passed (401 ms) |
+| `test_list_without_include_history_is_current_only` | API | list without include history is current only | ✅ passed (12 ms) | ✅ passed (374 ms) |
+| `test_filters_apply_to_each_revision` | API | filters apply to each revision | ✅ passed (18 ms) | ✅ passed (515 ms) |
+| `test_count_paging_and_sort_include_revisions` | API | count paging and sort include revisions | ✅ passed (67 ms) | ✅ passed (483 ms) |
+| `test_fields_keep_the_revision` | API | fields keep the revision | ✅ passed (12 ms) | ✅ passed (435 ms) |
+| `test_timestamp_range` | API | timestamp range | ✅ passed (23 ms) | ✅ passed (588 ms) |
+| `test_unchanged_patch_creates_no_revision` | API | unchanged patch creates no revision | ✅ passed (13 ms) | ✅ passed (482 ms) |
+| `test_retrieve_a_revision` | API | retrieve a revision | ✅ passed (12 ms) | ✅ passed (460 ms) |
+| `test_retrieve_a_revision_needs_a_valid_combination[params0-400]` | API | retrieve a revision needs a valid combination | ✅ passed (9 ms) | ✅ passed (361 ms) |
+| `test_retrieve_a_revision_needs_a_valid_combination[params1-400]` | API | retrieve a revision needs a valid combination | ✅ passed (9 ms) | ✅ passed (297 ms) |
+| `test_retrieve_a_revision_needs_a_valid_combination[params2-400]` | API | retrieve a revision needs a valid combination | ✅ passed (9 ms) | ✅ passed (389 ms) |
+| `test_retrieve_a_revision_needs_a_valid_combination[params3-400]` | API | retrieve a revision needs a valid combination | ✅ passed (9 ms) | ✅ passed (380 ms) |
+| `test_retrieve_a_revision_needs_a_valid_combination[params4-400]` | API | retrieve a revision needs a valid combination | ✅ passed (10 ms) | ✅ passed (279 ms) |
+| `test_retrieve_a_revision_needs_a_valid_combination[params5-400]` | API | retrieve a revision needs a valid combination | ✅ passed (9 ms) | ✅ passed (361 ms) |
+| `test_retrieve_a_revision_needs_a_valid_combination[params6-404]` | API | retrieve a revision needs a valid combination | ✅ passed (11 ms) | ✅ passed (405 ms) |
+| `test_invalid_list_parameters` | API | invalid list parameters | ✅ passed (2 ms) | ✅ passed (10 ms) |
+| `test_delete_keeps_the_revisions` | API | delete keeps the revisions | ✅ passed (11 ms) | ✅ passed (323 ms) |
+| `test_new_service_has_no_history_yet` | API | new service has no history yet | ✅ passed (8 ms) | ✅ passed (275 ms) |
 
 ### `test_history_unit.py`
 
@@ -140,16 +140,16 @@ Revision history: parameter checks and bookkeeping, no API and no database.
 | Test | Level | Description | PostgreSQL | Oracle |
 |---|---|---|---|---|
 | `test_list_range_without_history_is_none` | Unit | list range without history is none | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
-| `test_list_range_parses_the_period` | Unit | list range parses the period | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
-| `test_list_range_rejects[params0]` | Unit | list range rejects | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
-| `test_list_range_rejects[params1]` | Unit | list range rejects | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
-| `test_list_range_rejects[params2]` | Unit | list range rejects | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_list_range_parses_the_period` | Unit | list range parses the period | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
+| `test_list_range_rejects[params0]` | Unit | list range rejects | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
+| `test_list_range_rejects[params1]` | Unit | list range rejects | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
+| `test_list_range_rejects[params2]` | Unit | list range rejects | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
 | `test_list_range_rejects[params3]` | Unit | list range rejects | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
 | `test_include_history_needs_the_setting` | Unit | include history needs the setting | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_by_id_revision` | Unit | by id revision | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
-| `test_filters_through_references_are_not_supported_on_history` | Unit | filters through references are not supported on history | ✅ passed (1 ms) | ✅ passed (1 ms) |
-| `test_history_statements_cover_both_tables[postgresql]` | Unit | history statements cover both tables | ✅ passed (3 ms) | ✅ passed (6 ms) |
-| `test_history_statements_cover_both_tables[oracle]` | Unit | history statements cover both tables | ✅ passed (1 ms) | ✅ passed (3 ms) |
+| `test_filters_through_references_are_not_supported_on_history` | Unit | filters through references are not supported on history | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
+| `test_history_statements_cover_both_tables[postgresql]` | Unit | history statements cover both tables | ✅ passed (3 ms) | ✅ passed (7 ms) |
+| `test_history_statements_cover_both_tables[oracle]` | Unit | history statements cover both tables | ✅ passed (1 ms) | ✅ passed (2 ms) |
 | `test_archive_advances_the_revision` | Unit | archive advances the revision | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_archive_of_a_service_untouched_since_activation` | Unit | No revision yet: its version becomes revision 1 with an unknown start. | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_archive_is_a_no_op_when_disabled` | Unit | archive is a no op when disabled | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
@@ -165,7 +165,7 @@ Unit tests for the TMF630 filter parser and SQL/JSON path renderers (no DB neede
 | `test_attribute_filter_pg[params1-$ ? ((@."state" == "active") \|\| (@."state" == "inactive"))]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_attribute_filter_pg[params2-$ ? (@."relatedParty"."partyOrPartyRole"."name" == "Peter Meyer")]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_attribute_filter_pg[params3-$ ? (@."startDate" >= "2024-01-01")]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
-| `test_attribute_filter_pg[params4-$ ? (@."startDate" >= "2024-01-01")]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
+| `test_attribute_filter_pg[params4-$ ? (@."startDate" >= "2024-01-01")]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (1 ms) |
 | `test_attribute_filter_pg[params5-$ ? (@."state" != "active")]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_attribute_filter_pg[params6-$ ? ((@."value" == "300") \|\| (@."value" == 300))]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
 | `test_attribute_filter_pg[params7-$ ? ((@."isEnabled" == "true") \|\| (@."isEnabled" == true))]` | Unit | attribute filter pg | ✅ passed (< 1 ms) | ✅ passed (< 1 ms) |
@@ -244,38 +244,38 @@ Data model per test run (all scoped by serviceType "Rel-<run id>" of the referen
 
 | Test | Level | Description | PostgreSQL | Oracle |
 |---|---|---|---|---|
-| `test_attribute_filter_through_relationship` | API | attribute filter through relationship | ✅ passed (20 ms) | ✅ passed (613 ms) |
-| `test_jsonpath_filter_through_relationship` | API | jsonpath filter through relationship | ✅ passed (5 ms) | ✅ passed (173 ms) |
-| `test_relationship_type_applies_to_the_same_relationship` | API | relationship type applies to the same relationship | ✅ passed (7 ms) | ✅ passed (130 ms) |
-| `test_characteristic_name_and_value_from_the_same_element` | API | G has a mac and the value 00:11:22:33:44:55, but not in the same characteristic -> F must not match. | ✅ passed (6 ms) | ✅ passed (149 ms) |
-| `test_repeated_parameter_means_separate_elements` | API | repeated parameter means separate elements | ✅ passed (3 ms) | ✅ passed (57 ms) |
-| `test_attribute_of_the_referenced_service` | API | attribute of the referenced service | ✅ passed (4237 ms) | ✅ passed (10291 ms) |
-| `test_filter_on_reference_fields_needs_no_join` | API | filter on reference fields needs no join | ✅ passed (3 ms) | ✅ passed (63 ms) |
-| `test_supporting_service` | API | supporting service | ✅ passed (5 ms) | ✅ passed (93 ms) |
-| `test_no_match` | API | no match | ✅ passed (3 ms) | ✅ passed (35 ms) |
-| `test_pagination_header_counts_joined_matches` | API | pagination header counts joined matches | ✅ passed (4 ms) | ✅ passed (72 ms) |
-| `test_nested_references_are_rejected` | API | nested references are rejected | ✅ passed (28 ms) | ✅ passed (736 ms) |
+| `test_attribute_filter_through_relationship` | API | attribute filter through relationship | ✅ passed (20 ms) | ✅ passed (590 ms) |
+| `test_jsonpath_filter_through_relationship` | API | jsonpath filter through relationship | ✅ passed (4 ms) | ✅ passed (45 ms) |
+| `test_relationship_type_applies_to_the_same_relationship` | API | relationship type applies to the same relationship | ✅ passed (6 ms) | ✅ passed (80 ms) |
+| `test_characteristic_name_and_value_from_the_same_element` | API | G has a mac and the value 00:11:22:33:44:55, but not in the same characteristic -> F must not match. | ✅ passed (8 ms) | ✅ passed (163 ms) |
+| `test_repeated_parameter_means_separate_elements` | API | repeated parameter means separate elements | ✅ passed (4 ms) | ✅ passed (42 ms) |
+| `test_attribute_of_the_referenced_service` | API | attribute of the referenced service | ✅ passed (586 ms) | ✅ passed (9748 ms) |
+| `test_filter_on_reference_fields_needs_no_join` | API | filter on reference fields needs no join | ✅ passed (3 ms) | ✅ passed (148 ms) |
+| `test_supporting_service` | API | supporting service | ✅ passed (4 ms) | ✅ passed (56 ms) |
+| `test_no_match` | API | no match | ✅ passed (3 ms) | ✅ passed (45 ms) |
+| `test_pagination_header_counts_joined_matches` | API | pagination header counts joined matches | ✅ passed (4 ms) | ✅ passed (44 ms) |
+| `test_nested_references_are_rejected` | API | nested references are rejected | ✅ passed (17 ms) | ✅ passed (702 ms) |
 
 ## Performance
 
-`scripts/bench.py`: 30 requests per query via the HTTP API (after a warm-up), end-to-end latency including `X-Total-Count`; data from `scripts/seed.py`. The execution plans show the SQL the API generates for each query.
+`scripts/bench.py`: 30 requests per query via the HTTP API (after a warm-up), end-to-end latency including `X-Total-Count`; data from `scripts/seed.py`, tables vacuumed / statistics gathered after the tests. The execution plans show the SQL the API generates for each query.
 
 ### PostgreSQL
 
 ```text
-http://127.0.0.1:8001: 50000 services
+http://127.0.0.1:8001: 50001 services
 
 query                                     matches   p50 ms   p95 ms
-mac (JSONPath filter, name && value)            1      1.9      4.7
-mac (attribute filter)                          1      1.7      1.8
-mac, no match                                   0      1.7      2.3
-A related to B with mac (join)                  1      3.3      3.9
-related to B with mac, no match (join)          0      2.8      3.0
-referenced service state (join, ~3%)          857   1472.2   1510.2
-rare relatedParty name                         10      1.7      1.8
-serviceType + state (~3%)                    1713      6.9      7.8
-range startDate.gte (no index)                529    129.2    137.3
-no filter, deep page                        50000      6.2      7.0
+mac (JSONPath filter, name && value)            1      1.7      2.3
+mac (attribute filter)                          1      1.6      1.8
+mac, no match                                   0      1.6      1.8
+A related to B with mac (join)                  1      3.1      3.5
+related to B with mac, no match (join)          0      2.7      3.1
+referenced service state (join, ~3%)          857     92.5    119.4
+rare relatedParty name                         10      1.7      2.0
+serviceType + state (~3%)                    1713      7.6      8.2
+range startDate.gte (no index)                529    124.9    129.1
+no filter, deep page                        50001      4.8      5.1
 ```
 
 <details><summary>Execution plans</summary>
@@ -294,8 +294,8 @@ no filter, deep page                        50000      6.2      7.0
                               Index Cond: (payload @? '$."serviceCharacteristic"[*]?(@."name" == "mac" && @."value" == "02:00:00:00:61:af")'::jsonpath)
       ->  Index Scan using service_pkey on service (actual rows=1 loops=1)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.416 ms
-    Execution Time: 0.321 ms
+    Planning Time: 0.372 ms
+    Execution Time: 0.134 ms
 
 === mac (attribute filter)
     Nested Loop (actual rows=1 loops=1)
@@ -310,8 +310,8 @@ no filter, deep page                        50000      6.2      7.0
                               Index Cond: (payload @? '$?(@."serviceCharacteristic"."value" == "02:00:00:00:61:af")'::jsonpath)
       ->  Index Scan using service_pkey on service (actual rows=1 loops=1)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.063 ms
-    Execution Time: 0.111 ms
+    Planning Time: 0.054 ms
+    Execution Time: 0.023 ms
 
 === mac, no match
     Nested Loop (actual rows=0 loops=1)
@@ -325,8 +325,8 @@ no filter, deep page                        50000      6.2      7.0
                               Index Cond: (payload @? '$."serviceCharacteristic"[*]?(@."name" == "mac" && @."value" == "ff:ff:ff:ff:ff:ff")'::jsonpath)
       ->  Index Scan using service_pkey on service (never executed)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.061 ms
-    Execution Time: 0.187 ms
+    Planning Time: 0.047 ms
+    Execution Time: 0.041 ms
 
 === A related to B with mac (join)
     Nested Loop (actual rows=1 loops=1)
@@ -357,8 +357,8 @@ no filter, deep page                        50000      6.2      7.0
                   Heap Fetches: 0
       ->  Index Scan using service_pkey on service (actual rows=1 loops=1)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.212 ms
-    Execution Time: 0.951 ms
+    Planning Time: 0.197 ms
+    Execution Time: 0.444 ms
 
 === related to B with mac, no match (join)
     Nested Loop (actual rows=0 loops=1)
@@ -387,8 +387,8 @@ no filter, deep page                        50000      6.2      7.0
                   Heap Fetches: 0
       ->  Index Scan using service_pkey on service (never executed)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.080 ms
-    Execution Time: 0.727 ms
+    Planning Time: 0.086 ms
+    Execution Time: 0.351 ms
 
 === referenced service state (join, ~3%)
     Nested Loop (actual rows=100 loops=1)
@@ -405,8 +405,8 @@ no filter, deep page                        50000      6.2      7.0
                           ->  Nested Loop (actual rows=4222 loops=1)
                                 ->  Bitmap Heap Scan on service t2 (actual rows=8421 loops=1)
                                       Recheck Cond: (payload @? '$?(@."state" == "suspended")'::jsonpath)
-                                      Heap Blocks: exact=6544
-                                      ->  Bitmap Index Scan on ix_service_payload_gin (actual rows=8495 loops=1)
+                                      Heap Blocks: exact=6509
+                                      ->  Bitmap Index Scan on ix_service_payload_gin (actual rows=8425 loops=1)
                                             Index Cond: (payload @? '$?(@."state" == "suspended")'::jsonpath)
                                 ->  Bitmap Heap Scan on service s2 (actual rows=1 loops=8421)
                                       Recheck Cond: (payload @> jsonb_build_object('serviceRelationship', jsonb_build_array(jsonb_build_object('service', jsonb_build_object('id', (t2.payload -> 'id'::text))))))
@@ -414,14 +414,21 @@ no filter, deep page                        50000      6.2      7.0
                                       Heap Blocks: exact=4222
                                       ->  Bitmap Index Scan on ix_service_payload_gin (actual rows=1 loops=8421)
                                             Index Cond: (payload @> jsonb_build_object('serviceRelationship', jsonb_build_array(jsonb_build_object('service', jsonb_build_object('id', (t2.payload -> 'id'::text))))))
-            ->  Index Scan using service_pkey on service service_1 (actual rows=100 loops=1)
-                  Index Cond: (id = ANY ($1))
-                  Filter: (payload @? '$?(@."serviceType" == "Cloud")'::jsonpath)
-                  Rows Removed by Filter: 433
+            ->  Sort (actual rows=100 loops=1)
+                  Sort Key: service_1.id
+                  Sort Method: top-N heapsort  Memory: 28kB
+                  ->  Bitmap Heap Scan on service service_1 (actual rows=857 loops=1)
+                        Recheck Cond: ((payload @? '$?(@."serviceType" == "Cloud")'::jsonpath) AND (id = ANY ($1)))
+                        Heap Blocks: exact=842
+                        ->  BitmapAnd (actual rows=0 loops=1)
+                              ->  Bitmap Index Scan on ix_service_payload_gin (actual rows=10042 loops=1)
+                                    Index Cond: (payload @? '$?(@."serviceType" == "Cloud")'::jsonpath)
+                              ->  Bitmap Index Scan on service_pkey (actual rows=4222 loops=1)
+                                    Index Cond: (id = ANY ($1))
       ->  Index Scan using service_pkey on service (actual rows=1 loops=100)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.105 ms
-    Execution Time: 742.507 ms
+    Planning Time: 0.119 ms
+    Execution Time: 38.476 ms
 
 === rare relatedParty name
     Nested Loop (actual rows=10 loops=1)
@@ -436,8 +443,8 @@ no filter, deep page                        50000      6.2      7.0
                               Index Cond: (payload @? '$?(@."relatedParty"."partyOrPartyRole"."name" == "Customer 00001")'::jsonpath)
       ->  Index Scan using service_pkey on service (actual rows=1 loops=10)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.104 ms
-    Execution Time: 0.163 ms
+    Planning Time: 0.076 ms
+    Execution Time: 0.052 ms
 
 === serviceType + state (~3%)
     Nested Loop (actual rows=100 loops=1)
@@ -452,8 +459,8 @@ no filter, deep page                        50000      6.2      7.0
                               Index Cond: ((payload @? '$?(@."serviceType" == "Cloud")'::jsonpath) AND (payload @? '$?(@."state" == "suspended")'::jsonpath))
       ->  Index Scan using service_pkey on service (actual rows=1 loops=100)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.067 ms
-    Execution Time: 1.939 ms
+    Planning Time: 0.053 ms
+    Execution Time: 1.392 ms
 
 === range startDate.gte (no index)
     Nested Loop (actual rows=100 loops=1)
@@ -463,18 +470,18 @@ no filter, deep page                        50000      6.2      7.0
                   Rows Removed by Filter: 8791
       ->  Index Scan using service_pkey on service (actual rows=1 loops=100)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.054 ms
-    Execution Time: 5.041 ms
+    Planning Time: 0.046 ms
+    Execution Time: 3.955 ms
 
 === no filter, deep page
     Nested Loop (actual rows=100 loops=1)
       ->  Limit (actual rows=100 loops=1)
-            ->  Index Only Scan using service_pkey on service service_1 (actual rows=49900 loops=1)
-                  Heap Fetches: 2452
+            ->  Index Only Scan using service_pkey on service service_1 (actual rows=49901 loops=1)
+                  Heap Fetches: 283
       ->  Index Scan using service_pkey on service (actual rows=1 loops=100)
             Index Cond: (id = service_1.id)
-    Planning Time: 0.062 ms
-    Execution Time: 2.094 ms
+    Planning Time: 0.040 ms
+    Execution Time: 1.320 ms
 ```
 
 </details>
@@ -485,16 +492,16 @@ no filter, deep page                        50000      6.2      7.0
 http://127.0.0.1:8003: 1000000 services
 
 query                                     matches   p50 ms   p95 ms
-mac (JSONPath filter, name && value)            1     25.6     35.8
-mac (attribute filter)                          1     25.2     35.9
-mac, no match                                   0     24.8     28.8
-A related to B with mac (join)                  1     25.8     37.8
-related to B with mac, no match (join)          0     26.3     33.2
-referenced service state (join, ~3%)        16570   7865.9   9046.4
-rare relatedParty name                         10     28.0     38.5
-serviceType + state (~3%)                   33241   3463.4   4246.9
-range startDate.gte (no index)              10890   1837.8   2195.2
-no filter, deep page                      1000000    293.7    357.4
+mac (JSONPath filter, name && value)            1     29.4     51.0
+mac (attribute filter)                          1     29.1     51.3
+mac, no match                                   0     27.9     48.1
+A related to B with mac (join)                  1     29.1    111.5
+related to B with mac, no match (join)          0     29.8     41.3
+referenced service state (join, ~3%)        16570   7958.7   8822.2
+rare relatedParty name                         10     29.0     60.6
+serviceType + state (~3%)                   33241   3443.8   4014.5
+range startDate.gte (no index)              10890   1842.9   2077.6
+no filter, deep page                      1000000    288.8    389.8
 ```
 
 <details><summary>Execution plans</summary>
