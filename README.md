@@ -286,7 +286,7 @@ TMF_BASE_URL=http://127.0.0.1:8080 pytest tests/pytest     # + integration tests
 
 `tests/pytest/test_events.py` starts an HTTP listener the API has to call back. It registers its callback under
 `TMF_CALLBACK_HOST` (default `127.0.0.1`, i.e. the API runs on the host); for the API in the Docker container use
-`TMF_CALLBACK_HOST=host.docker.internal` (Linux: add `extra_hosts: ["host.docker.internal:host-gateway"]` to the `app` service).
+`TMF_CALLBACK_HOST=host.docker.internal` (Docker on Linux: start the app with the override `-f docker-compose.yml -f docker-compose.host-gateway.yml`; Podman: `host.containers.internal`).
 
 The integration tests are backend-neutral and run unchanged against both databases. The history tests
 (`test_history.py`) need an API started with `HISTORY_ENABLED=true` and are skipped otherwise.
@@ -299,7 +299,7 @@ is a walk-through of the features with checked results: it creates its own servi
 array element, operators, JSONPath, object values, `fields`, `sort`, paging), through references, changes them and
 shows the revision history and the event notifications of a hub subscription; the history requests are skipped when the API runs
 without `HISTORY_ENABLED`, the event requests when no listener runs (`python scripts/event_listener.py`, port 9099; the `compose`
-environment sets `callback_url` so that the container reaches the listener on the host). The official TM Forum conformance test kit runs with `ctk/run-api-ctk.sh` (see [ctk/README.md](ctk/README.md)); the API passes all 37 of its tests.
+environment sets `callback_url` to `host.docker.internal`, which the container reaches the listener on the host with: built in with Docker Desktop, with Docker on Linux through `docker-compose.host-gateway.yml`; with Podman set the environment variable `callback_url` to `http://host.containers.internal:9099`). The official TM Forum conformance test kit runs with `ctk/run-api-ctk.sh` (see [ctk/README.md](ctk/README.md)); the API passes all 37 of its tests.
 
 ## Performance
 

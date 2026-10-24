@@ -58,8 +58,6 @@ services:
       OAUTH2_JWKS_URL: ${OAUTH2_JWKS_URL:-}
       OAUTH2_AUDIENCE: ${OAUTH2_AUDIENCE:-}
       OAUTH2_ROLES_CLAIM: ${OAUTH2_ROLES_CLAIM:-realm_access.roles}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"  # event callbacks to a listener on the host (Linux needs this)
     ports:
       - "${APP_PORT:-8080}:8000"
     healthcheck:

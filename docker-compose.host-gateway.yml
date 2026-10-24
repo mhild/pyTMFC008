@@ -1,0 +1,9 @@
+# Optional override for Docker on Linux: lets the app container reach a service on the host (e.g. the event listener
+# of the Bruno demo) as host.docker.internal. Docker Desktop and Podman provide such a name themselves
+# (Podman: host.containers.internal), and Podman can't resolve `host-gateway`: don't use this file there.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.host-gateway.yml up -d app
+services:
+  app:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
