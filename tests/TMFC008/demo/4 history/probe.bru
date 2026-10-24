@@ -1,0 +1,35 @@
+meta {
+  name: history enabled?
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?includeHistory=true&limit=1
+  body: none
+  auth: inherit
+}
+
+params:query {
+  includeHistory: true
+  limit: 1
+}
+
+script:post-response {
+  bru.setVar('history_enabled', [200, 206].includes(res.status));
+}
+
+tests {
+  test("200/206: history is enabled, 400: it is not (the other requests of this folder are skipped then)", function () {
+    expect(res.status).to.be.oneOf([200, 206, 400]);
+  });
+}
+
+docs {
+  `includeHistory=true` is answered with `400` while history is switched off.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

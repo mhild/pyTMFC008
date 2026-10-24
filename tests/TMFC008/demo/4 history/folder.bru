@@ -1,0 +1,14 @@
+meta {
+  name: 4 history
+  seq: 4
+}
+
+auth {
+  mode: inherit
+}
+
+docs {
+  Needs `HISTORY_ENABLED=true`. Every PATCH/DELETE keeps the version that was current: the current version stays
+  clean, an earlier revision carries `revision: {id, startTimestamp, endTimestamp}`.
+  A: revision 1 (active, name demo-A) > 2 (suspended) > current 3 (renamed).
+}

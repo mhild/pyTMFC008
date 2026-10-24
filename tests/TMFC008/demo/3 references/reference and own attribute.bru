@@ -1,0 +1,33 @@
+meta {
+  name: reference and own attribute
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Demo-{{demo_run}}&serviceRelationship.service.state=active&relatedParty.partyOrPartyRole.name=Peter Meyer
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Demo-{{demo_run}}
+  serviceRelationship.service.state: active
+  relatedParty.partyOrPartyRole.name: Peter Meyer
+}
+
+tests {
+  test("finds A", function () {
+    expect([200, 206]).to.include(res.status);
+    expect(res.body.map(s => s.name.replace('demo-', '').slice(0, 1)).sort()).to.deep.equal(['A']);
+  });
+}
+
+docs {
+  Conditions through a reference combine with ordinary ones.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

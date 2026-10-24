@@ -1,0 +1,20 @@
+meta {
+  name: GET deleted service (404)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{A_ID_href}}
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("gone", function () { expect(res.status).to.equal(404); });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,32 @@
+meta {
+  name: POST /service invalid (400)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{tmfc008_base_url}}/service
+  body: json
+  auth: inherit
+}
+
+body:json {
+  { "@type": "Service", "name": "no specification", "state": "running" }
+}
+
+tests {
+  test("rejected with a TMF Error", function () {
+    expect(res.status).to.equal(400);
+    expect(res.body['@type']).to.equal('Error');
+    expect(res.body.reason).to.contain('Invalid Service_FVO');
+  });
+}
+
+docs {
+  The body is validated against the OpenAPI schema: `serviceSpecification` is required and `running` is no state.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

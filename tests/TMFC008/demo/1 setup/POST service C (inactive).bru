@@ -1,0 +1,54 @@
+meta {
+  name: POST /service C (inactive)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{tmfc008_base_url}}/service
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "@type": "Service",
+    "serviceType": "Demo-{{demo_run}}",
+    "name": "demo-C vCPE",
+    "state": "inactive",
+    "startDate": "2022-03-01T00:00:00Z",
+    "serviceSpecification": { "id": "vcpe-spec-1", "name": "vCPE", "@type": "ServiceSpecificationRef" },
+    "serviceCharacteristic": [
+      { "name": "mac", "valueType": "string", "value": "{{mac_c}}", "@type": "StringCharacteristic" },
+      { "name": "vlan", "valueType": "integer", "value": 300, "@type": "IntegerCharacteristic" }
+    ],
+    "relatedParty": [
+      { "role": "user", "@type": "RelatedPartyRefOrPartyRoleRef",
+         "partyOrPartyRole": { "id": "party-peter-meyer", "name": "Peter Meyer", "@type": "PartyRef" } }
+    ]
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar('C_ID', res.body.id);
+    bru.setVar('C_ID_href', res.body.href);
+  }
+}
+
+tests {
+  test("created with id and href", function () {
+    expect(res.status).to.equal(201);
+    expect(res.body.id).to.be.a('string');
+    expect(res.body.href).to.contain('/service/' + res.body.id);
+  });
+}
+
+docs {
+  Creates service C (inactive) (inactive). The id is kept in the variable `C_ID`.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

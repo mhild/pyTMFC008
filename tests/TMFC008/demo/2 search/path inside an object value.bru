@@ -1,0 +1,32 @@
+meta {
+  name: path inside an object value
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Demo-{{demo_run}}&serviceCharacteristic.value.vCPE_IP=10.20.30.40
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Demo-{{demo_run}}
+  serviceCharacteristic.value.vCPE_IP: 10.20.30.40
+}
+
+tests {
+  test("finds A", function () {
+    expect([200, 206]).to.include(res.status);
+    expect(res.body.map(s => s.name.replace('demo-', '').slice(0, 1)).sort()).to.deep.equal(['A']);
+  });
+}
+
+docs {
+  A path inside an object-valued characteristic. It has no index: keep it combined with an indexed condition like `serviceType`, otherwise it scans the table.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

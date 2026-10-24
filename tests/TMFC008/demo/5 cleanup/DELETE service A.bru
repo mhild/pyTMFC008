@@ -1,0 +1,20 @@
+meta {
+  name: DELETE /service A
+  type: http
+  seq: 1
+}
+
+delete {
+  url: {{tmfc008_base_url}}/service/{{A_ID}}
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("deleted", function () { expect(res.status).to.equal(204); });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

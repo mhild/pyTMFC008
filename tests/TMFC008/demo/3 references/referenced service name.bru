@@ -1,0 +1,32 @@
+meta {
+  name: referenced service name
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Demo-{{demo_run}}&serviceRelationship.service.name=demo-B access
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Demo-{{demo_run}}
+  serviceRelationship.service.name: demo-B access
+}
+
+tests {
+  test("finds A", function () {
+    expect([200, 206]).to.include(res.status);
+    expect(res.body.map(s => s.name.replace('demo-', '').slice(0, 1)).sort()).to.deep.equal(['A']);
+  });
+}
+
+docs {
+  The reference holds no name: it is taken from the referenced service B.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

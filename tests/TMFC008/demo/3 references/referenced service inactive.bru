@@ -1,0 +1,32 @@
+meta {
+  name: referenced service inactive
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Demo-{{demo_run}}&serviceRelationship.service.state=inactive
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Demo-{{demo_run}}
+  serviceRelationship.service.state: inactive
+}
+
+tests {
+  test("finds nothing", function () {
+    expect([200, 206]).to.include(res.status);
+    expect(res.body.map(s => s.name.replace('demo-', '').slice(0, 1)).sort()).to.deep.equal([]);
+  });
+}
+
+docs {
+  B is active, so nobody depends on an inactive service.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

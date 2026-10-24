@@ -1,0 +1,39 @@
+meta {
+  name: PATCH merge-patch: state suspended
+  type: http
+  seq: 2
+}
+
+patch {
+  url: {{A_ID_href}}
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/merge-patch+json
+}
+
+body:json {
+  { "state": "suspended" }
+}
+
+script:pre-request {
+  if (!bru.getVar('history_enabled')) { bru.runner.skipRequest(); }
+}
+
+tests {
+  test("patched", function () {
+    expect(res.status).to.equal(200);
+    expect(res.body.state).to.equal('suspended');
+  });
+}
+
+docs {
+  JSON Merge Patch (RFC 7386) changes `state`; revision 1 is archived.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

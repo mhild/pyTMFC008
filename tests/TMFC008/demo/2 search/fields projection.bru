@@ -1,0 +1,33 @@
+meta {
+  name: fields projection
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Demo-{{demo_run}}&fields=name,state
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Demo-{{demo_run}}
+  fields: name,state
+}
+
+tests {
+  test("only the selected attributes plus id, href and @type", function () {
+    expect(res.status).to.be.oneOf([200, 206]);
+    expect(res.body).to.have.length(3);
+    res.body.forEach(s => expect(Object.keys(s).sort()).to.deep.equal(['@type', 'href', 'id', 'name', 'state']));
+  });
+}
+
+docs {
+  `fields=name,state` returns only these attributes (`id`, `href`, `@type` always).
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

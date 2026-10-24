@@ -1,0 +1,32 @@
+meta {
+  name: period without includeHistory (400)
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?revisionStartTimestamp=2020-01-01T00:00:00Z
+  body: none
+  auth: inherit
+}
+
+params:query {
+  revisionStartTimestamp: 2020-01-01T00:00:00Z
+}
+
+script:pre-request {
+  if (!bru.getVar('history_enabled')) { bru.runner.skipRequest(); }
+}
+
+tests {
+  test("400", function () { expect(res.status).to.equal(400); });
+}
+
+docs {
+  The period parameters make sense only with `includeHistory=true`.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

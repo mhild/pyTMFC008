@@ -1,0 +1,32 @@
+meta {
+  name: GET by id: revision missing (400)
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{tmfc008_base_url}}/service/{{A_ID}}?includeHistory=true
+  body: none
+  auth: inherit
+}
+
+params:query {
+  includeHistory: true
+}
+
+script:pre-request {
+  if (!bru.getVar('history_enabled')) { bru.runner.skipRequest(); }
+}
+
+tests {
+  test("400", function () { expect(res.status).to.equal(400); });
+}
+
+docs {
+  `includeHistory=true` on one service needs the revision.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

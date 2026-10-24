@@ -1,0 +1,27 @@
+meta {
+  name: demo
+  seq: 2
+}
+
+auth {
+  mode: inherit
+}
+
+script:pre-request {
+  // one run = one marker: every demo service gets serviceType Demo-<marker>, so the searches below see only
+  // their own data, whatever else is in the database
+  if (!bru.getVar('demo_run')) {
+    const run = Math.random().toString(16).slice(2, 10);
+    bru.setVar('demo_run', run);
+    bru.setVar('mac_a', `02:de:${run.slice(0, 2)}:${run.slice(2, 4)}:${run.slice(4, 6)}:0a`);
+    bru.setVar('mac_b', `02:de:${run.slice(0, 2)}:${run.slice(2, 4)}:${run.slice(4, 6)}:0b`);
+    bru.setVar('mac_c', `02:de:${run.slice(0, 2)}:${run.slice(2, 4)}:${run.slice(4, 6)}:0c`);
+  }
+}
+
+docs {
+  # TMF638 demo
+  Run the folders in order (right click on `demo` > Run, or `bru run demo --env dev`). The first folder creates
+  three services A, B, C (A depends on B) under a fresh `serviceType`, the others search, change and clean up.
+  `04 history` needs the API to run with `HISTORY_ENABLED=true` and is skipped otherwise.
+}

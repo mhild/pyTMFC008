@@ -1,0 +1,36 @@
+meta {
+  name: JSONPath with a comparison
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Demo-{{demo_run}}&filter={{filter_enc}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Demo-{{demo_run}}
+  filter: {{filter_enc}}
+}
+
+script:pre-request {
+  bru.setVar('filter_enc', encodeURIComponent("$.serviceCharacteristic[?(@.value.MaxTxRate > 200)]"));
+}
+
+tests {
+  test("finds A", function () {
+    expect([200, 206]).to.include(res.status);
+    expect(res.body.map(s => s.name.replace('demo-', '').slice(0, 1)).sort()).to.deep.equal(['A']);
+  });
+}
+
+docs {
+  JSONPath comparisons reach into object values: `@.value.MaxTxRate > 200`.
+}
+
+settings {
+  encodeUrl: false
+  timeout: 0
+}

@@ -1,0 +1,32 @@
+meta {
+  name: default: current versions only
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?id={{A_ID}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  id: {{A_ID}}
+}
+
+script:pre-request {
+  if (!bru.getVar('history_enabled')) { bru.runner.skipRequest(); }
+}
+
+tests {
+  test("one entry without revision", function () {
+    expect(res.body).to.have.length(1);
+    expect(res.body[0].revision).to.equal(undefined);
+    expect(res.body[0].state).to.equal('suspended');
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

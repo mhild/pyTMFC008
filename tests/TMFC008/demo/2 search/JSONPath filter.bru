@@ -1,0 +1,36 @@
+meta {
+  name: JSONPath filter
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Demo-{{demo_run}}&filter={{filter_enc}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Demo-{{demo_run}}
+  filter: {{filter_enc}}
+}
+
+script:pre-request {
+  bru.setVar('filter_enc', encodeURIComponent(`$.serviceCharacteristic[?(@.name=='mac' && @.value=='${bru.getVar('mac_a')}')]`));
+}
+
+tests {
+  test("finds A", function () {
+    expect([200, 206]).to.include(res.status);
+    expect(res.body.map(s => s.name.replace('demo-', '').slice(0, 1)).sort()).to.deep.equal(['A']);
+  });
+}
+
+docs {
+  TMF630 JSONPath: `filter=$.serviceCharacteristic[?(@.name=='mac' && @.value=='<mac>')]` (sent URL-encoded).
+}
+
+settings {
+  encodeUrl: false
+  timeout: 0
+}

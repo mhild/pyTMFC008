@@ -1,0 +1,60 @@
+meta {
+  name: POST /service A (depends on B)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{tmfc008_base_url}}/service
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "@type": "Service",
+    "serviceType": "Demo-{{demo_run}}",
+    "name": "demo-A vCPE",
+    "state": "active",
+    "startDate": "2024-05-01T00:00:00Z",
+    "serviceSpecification": { "id": "vcpe-spec-1", "name": "vCPE", "@type": "ServiceSpecificationRef" },
+    "serviceCharacteristic": [
+      { "name": "mac", "valueType": "string", "value": "{{mac_a}}", "@type": "StringCharacteristic" },
+      { "name": "vlan", "valueType": "integer", "value": 300, "@type": "IntegerCharacteristic" },
+      { "name": "vCPE", "valueType": "object", "@type": "ObjectCharacteristic",
+        "value": { "@type": "VCPE", "vCPE_IP": "10.20.30.40", "MaxTxRate": 300, "TransmitPower": "11 dBm" } }
+    ],
+    "relatedParty": [
+      { "role": "user", "@type": "RelatedPartyRefOrPartyRoleRef",
+         "partyOrPartyRole": { "id": "party-peter-meyer", "name": "Peter Meyer", "@type": "PartyRef" } }
+    ],
+    "serviceRelationship": [
+      { "relationshipType": "DependentOn", "@type": "ServiceRelationship",
+        "service": { "id": "{{B_ID}}", "href": "{{B_ID_href}}", "@type": "ServiceRef", "@referredType": "Service" } }
+    ]
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar('A_ID', res.body.id);
+    bru.setVar('A_ID_href', res.body.href);
+  }
+}
+
+tests {
+  test("created with id and href", function () {
+    expect(res.status).to.equal(201);
+    expect(res.body.id).to.be.a('string');
+    expect(res.body.href).to.contain('/service/' + res.body.id);
+  });
+}
+
+docs {
+  Creates service A (depends on B) (active). The id is kept in the variable `A_ID`.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

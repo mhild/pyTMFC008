@@ -1,0 +1,32 @@
+meta {
+  name: revisionEndTimestamp
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?includeHistory=true&id={{A_ID}}&revisionEndTimestamp={{rev1_end}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  includeHistory: true
+  id: {{A_ID}}
+  revisionEndTimestamp: {{rev1_end}}
+}
+
+script:pre-request {
+  if (!bru.getVar('history_enabled')) { bru.runner.skipRequest(); }
+}
+
+tests {
+  test("revisions that had started by then: 1 and 2 (it started the moment 1 ended)", function () {
+    expect(res.body.map(s => s.revision ? s.revision.id : null)).to.deep.equal([1, 2]);
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,32 @@
+meta {
+  name: operators startDate.gte
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Demo-{{demo_run}}&startDate.gte=2023-01-01
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Demo-{{demo_run}}
+  startDate.gte: 2023-01-01
+}
+
+tests {
+  test("finds A, B", function () {
+    expect([200, 206]).to.include(res.status);
+    expect(res.body.map(s => s.name.replace('demo-', '').slice(0, 1)).sort()).to.deep.equal(['A', 'B']);
+  });
+}
+
+docs {
+  Operators as suffix (`.gte .gt .lt .lte .ne`) or inline (`startDate>=2023-01-01`).
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

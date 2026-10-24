@@ -1,0 +1,32 @@
+meta {
+  name: reference id (no join)
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Demo-{{demo_run}}&serviceRelationship.service.id={{B_ID}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Demo-{{demo_run}}
+  serviceRelationship.service.id: {{B_ID}}
+}
+
+tests {
+  test("finds A", function () {
+    expect([200, 206]).to.include(res.status);
+    expect(res.body.map(s => s.name.replace('demo-', '').slice(0, 1)).sort()).to.deep.equal(['A']);
+  });
+}
+
+docs {
+  `id`, `href` and `@referredType` describe the reference itself and need no join.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

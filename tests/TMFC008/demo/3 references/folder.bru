@@ -1,0 +1,14 @@
+meta {
+  name: 3 references
+  seq: 3
+}
+
+auth {
+  mode: inherit
+}
+
+docs {
+  A references B (`serviceRelationship[].service`). A condition **through** the reference
+  (`serviceRelationship.service.<attribute>`) matches the referenced service's attribute, although the reference
+  itself holds only id and href. Evaluated by one join on the id, via index.
+}

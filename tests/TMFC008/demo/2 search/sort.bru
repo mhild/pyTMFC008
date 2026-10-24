@@ -1,0 +1,33 @@
+meta {
+  name: sort -startDate
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Demo-{{demo_run}}&sort=-startDate,name&fields=name,startDate
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Demo-{{demo_run}}
+  sort: -startDate,name
+  fields: name,startDate
+}
+
+tests {
+  test("newest first", function () {
+    expect(res.body.map(s => s.startDate)).to.deep.equal(
+      ['2024-05-01T00:00:00Z', '2023-01-10T00:00:00Z', '2022-03-01T00:00:00Z']);
+  });
+}
+
+docs {
+  `sort=-startDate,name`: `-` descending; numbers sort numerically, text bytewise.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

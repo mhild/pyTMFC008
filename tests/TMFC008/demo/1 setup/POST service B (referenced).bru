@@ -1,0 +1,54 @@
+meta {
+  name: POST /service B (referenced)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{tmfc008_base_url}}/service
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "@type": "Service",
+    "serviceType": "Demo-{{demo_run}}",
+    "name": "demo-B access",
+    "state": "active",
+    "startDate": "2023-01-10T00:00:00Z",
+    "serviceSpecification": { "id": "vcpe-spec-1", "name": "vCPE", "@type": "ServiceSpecificationRef" },
+    "serviceCharacteristic": [
+      { "name": "mac", "valueType": "string", "value": "{{mac_b}}", "@type": "StringCharacteristic" },
+      { "name": "vlan", "valueType": "integer", "value": 300, "@type": "IntegerCharacteristic" }
+    ],
+    "relatedParty": [
+      { "role": "user", "@type": "RelatedPartyRefOrPartyRoleRef",
+         "partyOrPartyRole": { "id": "party-anna-müller", "name": "Anna Müller", "@type": "PartyRef" } }
+    ]
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar('B_ID', res.body.id);
+    bru.setVar('B_ID_href', res.body.href);
+  }
+}
+
+tests {
+  test("created with id and href", function () {
+    expect(res.status).to.equal(201);
+    expect(res.body.id).to.be.a('string');
+    expect(res.body.href).to.contain('/service/' + res.body.id);
+  });
+}
+
+docs {
+  Creates service B (referenced) (active). The id is kept in the variable `B_ID`.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

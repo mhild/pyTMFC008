@@ -1,0 +1,32 @@
+meta {
+  name: referenced service state
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Demo-{{demo_run}}&serviceRelationship.service.state=active
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Demo-{{demo_run}}
+  serviceRelationship.service.state: active
+}
+
+tests {
+  test("finds A", function () {
+    expect([200, 206]).to.include(res.status);
+    expect(res.body.map(s => s.name.replace('demo-', '').slice(0, 1)).sort()).to.deep.equal(['A']);
+  });
+}
+
+docs {
+  Services that depend on an **active** service: only A (B is active but depends on nothing, C has no relationship).
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

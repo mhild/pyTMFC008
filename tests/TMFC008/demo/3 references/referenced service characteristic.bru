@@ -1,0 +1,33 @@
+meta {
+  name: referenced service characteristic
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Demo-{{demo_run}}&serviceRelationship.service.serviceCharacteristic.name=mac&serviceRelationship.service.serviceCharacteristic.value={{mac_b}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Demo-{{demo_run}}
+  serviceRelationship.service.serviceCharacteristic.name: mac
+  serviceRelationship.service.serviceCharacteristic.value: {{mac_b}}
+}
+
+tests {
+  test("finds A", function () {
+    expect([200, 206]).to.include(res.status);
+    expect(res.body.map(s => s.name.replace('demo-', '').slice(0, 1)).sort()).to.deep.equal(['A']);
+  });
+}
+
+docs {
+  Who depends on the service with this MAC address? Name and value apply to the same characteristic of B.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

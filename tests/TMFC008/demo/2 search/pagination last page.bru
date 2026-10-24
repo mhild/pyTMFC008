@@ -1,0 +1,31 @@
+meta {
+  name: pagination last page
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Demo-{{demo_run}}&limit=2&offset=2&sort=name
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Demo-{{demo_run}}
+  limit: 2
+  offset: 2
+  sort: name
+}
+
+tests {
+  test("last page: 200 with the remaining service", function () {
+    expect(res.status).to.equal(200);
+    expect(res.getHeader('x-total-count')).to.equal('3');
+    expect(res.body.map(s => s.name)).to.deep.equal(['demo-C vCPE']);
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,33 @@
+meta {
+  name: GET by id: unknown revision (404)
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{tmfc008_base_url}}/service/{{A_ID}}?includeHistory=true&revision=99
+  body: none
+  auth: inherit
+}
+
+params:query {
+  includeHistory: true
+  revision: 99
+}
+
+script:pre-request {
+  if (!bru.getVar('history_enabled')) { bru.runner.skipRequest(); }
+}
+
+tests {
+  test("404", function () { expect(res.status).to.equal(404); });
+}
+
+docs {
+  A combination that doesn't exist.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

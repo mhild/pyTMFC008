@@ -1,0 +1,48 @@
+meta {
+  name: includeHistory: all revisions of A
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?includeHistory=true&id={{A_ID}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  includeHistory: true
+  id: {{A_ID}}
+}
+
+script:pre-request {
+  if (!bru.getVar('history_enabled')) { bru.runner.skipRequest(); }
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.length === 3) {
+    bru.setVar('rev1_end', res.body[0].revision.endTimestamp);
+    bru.setVar('rev2_end', res.body[1].revision.endTimestamp);
+  }
+}
+
+tests {
+  test("two earlier revisions, then the clean current version", function () {
+    expect(res.status).to.equal(200);
+    expect(res.body.map(s => s.revision ? s.revision.id : null)).to.deep.equal([1, 2, null]);
+    expect(res.body.map(s => s.state)).to.deep.equal(['active', 'suspended', 'suspended']);
+    expect(res.body.map(s => s.name)).to.deep.equal(['demo-A vCPE', 'demo-A vCPE', 'demo-A vCPE (renamed)']);
+  });
+  test("revisions follow each other without a gap", function () {
+    expect(res.body[0].revision.endTimestamp).to.equal(res.body[1].revision.startTimestamp);
+  });
+}
+
+docs {
+  `includeHistory=true` searches the current **and** the earlier revisions; every revision is an entry, oldest first, the current one last. Default is `false`.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,40 @@
+meta {
+  name: includeHistory: filter state=active
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?includeHistory=true&serviceType=Demo-{{demo_run}}&state=active&sort=name
+  body: none
+  auth: inherit
+}
+
+params:query {
+  includeHistory: true
+  serviceType: Demo-{{demo_run}}
+  state: active
+  sort: name
+}
+
+script:pre-request {
+  if (!bru.getVar('history_enabled')) { bru.runner.skipRequest(); }
+}
+
+tests {
+  test("A as it was while active, and B", function () {
+    expect(res.body).to.have.length(2);
+    expect(res.body[0].revision.id).to.equal(1);
+    expect(res.body[0].state).to.equal('active');
+    expect(res.body[1].name).to.equal('demo-B access');
+  });
+}
+
+docs {
+  Filters, sorting, paging and `fields` apply to every revision: the active A is revision 1.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

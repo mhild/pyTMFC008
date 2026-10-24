@@ -1,0 +1,36 @@
+meta {
+  name: revisionStartTimestamp
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?includeHistory=true&id={{A_ID}}&revisionStartTimestamp={{rev2_end}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  includeHistory: true
+  id: {{A_ID}}
+  revisionStartTimestamp: {{rev2_end}}
+}
+
+script:pre-request {
+  if (!bru.getVar('history_enabled')) { bru.runner.skipRequest(); }
+}
+
+tests {
+  test("revisions that were still valid at that time: 2 and the current one", function () {
+    expect(res.body.map(s => s.revision ? s.revision.id : null)).to.deep.equal([2, null]);
+  });
+}
+
+docs {
+  `revisionStartTimestamp` / `revisionEndTimestamp` (ISO 8601, UTC) select the revisions that were valid at some time within the period.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,36 @@
+meta {
+  name: pagination limit/offset
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{tmfc008_base_url}}/service?serviceType=Demo-{{demo_run}}&limit=2&offset=0&sort=name
+  body: none
+  auth: inherit
+}
+
+params:query {
+  serviceType: Demo-{{demo_run}}
+  limit: 2
+  offset: 0
+  sort: name
+}
+
+tests {
+  test("first page: 206 Partial Content with the totals in headers", function () {
+    expect(res.status).to.equal(206);
+    expect(res.getHeader('x-total-count')).to.equal('3');
+    expect(res.getHeader('x-result-count')).to.equal('2');
+    expect(res.body).to.have.length(2);
+  });
+}
+
+docs {
+  `X-Total-Count` is the number of matches, `X-Result-Count` the size of the page; `206` while more follow.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
