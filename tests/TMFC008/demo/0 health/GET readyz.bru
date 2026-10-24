@@ -1,0 +1,23 @@
+meta {
+  name: GET /readyz
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{tmfc008_base_url}}/readyz
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("ready: database reachable, schema migrated", function () {
+    expect(res.status).to.equal(200);
+    expect(res.body.status).to.equal('ok');
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

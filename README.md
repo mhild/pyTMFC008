@@ -50,6 +50,7 @@ Requirements for an external database:
 
 The entrypoint waits for the database (`scripts/wait_for_db.py`) and runs `alembic upgrade head`.
 API: http://127.0.0.1:8080/service, OpenAPI UI: http://127.0.0.1:8080/docs
+Health: `/livez` (process is up) and `/readyz` (database reachable and migrated, else 503); the compose healthcheck of `app` uses `/readyz`. Both are outside the TMF638 spec and not in the OpenAPI document.
 
 Locally without a container (databases from compose on ports 5432/1521, or any other host in the URL):
 

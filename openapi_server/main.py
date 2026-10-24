@@ -16,6 +16,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from openapi_server.apis.events_subscription_api import router as EventsSubscriptionApiRouter
+from openapi_server.apis.health_api import router as HealthApiRouter
 from openapi_server.apis.service_api import router as ServiceApiRouter
 from openapi_server.services.validation import warm_up
 
@@ -25,6 +26,7 @@ app = FastAPI(
     version="5.0.0",
 )
 
+app.include_router(HealthApiRouter)
 app.include_router(EventsSubscriptionApiRouter)
 app.include_router(ServiceApiRouter)
 warm_up()  # load the JSON schemas from the spec now, not on the first request

@@ -1,0 +1,23 @@
+meta {
+  name: GET /livez
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{tmfc008_base_url}}/livez
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("alive", function () {
+    expect(res.status).to.equal(200);
+    expect(res.body.status).to.equal('ok');
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

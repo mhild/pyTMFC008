@@ -55,6 +55,12 @@ services:
       - "host.docker.internal:host-gateway"  # event callbacks to a listener on the host (Linux needs this)
     ports:
       - "8080:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/readyz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
 
 volumes:
   postgres_data:

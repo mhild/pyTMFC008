@@ -1,0 +1,13 @@
+meta {
+  name: 0 health
+  seq: 0
+}
+
+auth {
+  mode: inherit
+}
+
+docs {
+  Operational endpoints (not part of TMF638): `/livez` - the process answers; `/readyz` - the database is reachable and
+  migrated (503 otherwise). Used by the compose healthcheck.
+}
