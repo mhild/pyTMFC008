@@ -252,6 +252,8 @@ Measured with 50,000 services on PostgreSQL (local) and **1,000,000 services on 
 | no filter, page at the end | 6.2 ms | 294 ms | deferred join via PK index |
 
 Notes:
+* After a bulk load or many changes run `VACUUM ANALYZE service` on PostgreSQL (`seed.py` does; autovacuum does in a
+  running system) - without it the reference join benchmark took 1.6 s instead of 77 ms.
 * Selective equality searches use the index and therefore scale logarithmically instead of linearly.
   On Oracle with 1 million services they still answer in ~30 ms; PostgreSQL was measured with 50,000 services only
   (the devcontainer VM has a small disk).

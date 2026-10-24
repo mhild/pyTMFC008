@@ -4,7 +4,7 @@
 
 Bypasses the API and uses the native bulk paths of the drivers
 (PostgreSQL: COPY via asyncpg, Oracle: executemany via python-oracledb),
-then refreshes optimizer statistics.
+then refreshes the optimizer statistics (PostgreSQL: VACUUM ANALYZE; also with --count 0).
 """
 import argparse
 import asyncio
@@ -42,7 +42,9 @@ async def seed_postgres(url, start, count, truncate):
             records = [(service_id(i), json.dumps(make_service(i))) for i in rng]
             await conn.copy_records_to_table("service", records=records, columns=["id", "payload"])
             print(f"  {rng.stop - start:>9} rows", end="\r")
-        await conn.execute("ANALYZE service")
+        # VACUUM too: after a bulk load (and many changes) without it, queries read the heap with a lot of
+        # extra work - the reference join benchmark took 1.6 s instead of 77 ms
+        await conn.execute("VACUUM (ANALYZE) service")
     finally:
         await conn.close()
 

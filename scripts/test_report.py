@@ -165,6 +165,11 @@ def describe(func: str, funcs: dict) -> str:
 
 def run_bench(base_url: str, db_url: str, runs: int):
     """-> (latency table, execution plans) as printed by scripts/bench.py"""
+    # the tests just changed the tables: vacuum / gather statistics, as autovacuum would in a running system
+    subprocess.run(
+        [sys.executable, os.path.join(ROOT, "scripts", "seed.py"), "--count", "0"],
+        capture_output=True, text=True, cwd=ROOT, env={**os.environ, "DATABASE_URL": db_url}, check=True,
+    )
     proc = subprocess.run(
         [sys.executable, os.path.join(ROOT, "scripts", "bench.py"), "--base-url", base_url, "--runs", str(runs), "--plans"],
         capture_output=True, text=True, cwd=ROOT, env={**os.environ, "DATABASE_URL": db_url},
@@ -272,7 +277,8 @@ def main():
             "## Performance",
             "",
             f"`scripts/bench.py`: {args.bench_runs} requests per query via the HTTP API (after a warm-up), "
-            "end-to-end latency including `X-Total-Count`; data from `scripts/seed.py`. "
+            "end-to-end latency including `X-Total-Count`; data from `scripts/seed.py`, tables vacuumed / statistics "
+            "gathered after the tests. "
             "The execution plans show the SQL the API generates for each query.",
             "",
         ]
