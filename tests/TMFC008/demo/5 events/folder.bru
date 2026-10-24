@@ -1,6 +1,6 @@
 meta {
   name: 5 events
-  seq: 5
+  seq: 6
 }
 
 auth {
@@ -27,7 +27,7 @@ script:pre-request {
 docs {
   Event notifications (TMF630 hub). A client registers a hub (`POST /hub`: callback URL and an optional query); after a
   change is committed the API posts the events to `<callback>/listener/<eventType>`.
-
+  
   Needs a listener: `python scripts/event_listener.py` (port 9099) - the requests are skipped without it. Environment
   variables `listener_url` (where this collection reads the events, default http://127.0.0.1:9099) and `callback_url`
   (what the API is told, default the same; for the API in a container e.g. http://host.docker.internal:9099).
