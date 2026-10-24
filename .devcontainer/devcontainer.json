@@ -33,9 +33,11 @@
   "remoteUser": "vscode",
   "containerUser": "vscode",
 
-  "forwardPorts": [8000],
+  "forwardPorts": [8000, 8080, 8180],
   "portsAttributes": {
-    "8000": { "label": "pyTMFC008 (8000)" }
+    "8000": { "label": "pyTMFC008 (8000)" },
+    "8080": { "label": "API (compose app)" },
+    "8180": { "label": "Keycloak (compose profile keycloak)" }
   },
 
   // The chown fixes a real problem: on first mount, a named volume gets
@@ -46,5 +48,6 @@
   // user) can report a successful /login without being able to persist the
   // token, and immediately show "Not logged in" again.
   // requirements.txt is installed only if present.
-  "postCreateCommand": "sudo mkdir -p /home/vscode/.claude && sudo chown -R vscode:vscode /home/vscode/.claude && if [ -f requirements.txt ]; then pip install --break-system-packages -r requirements.txt; fi"
+  // The Bruno CLI (`bru`) runs the collection in tests/TMFC008; the version is the one the collection was checked with.
+  "postCreateCommand": "sudo mkdir -p /home/vscode/.claude && sudo chown -R vscode:vscode /home/vscode/.claude && if [ -f requirements.txt ]; then pip install --break-system-packages -r requirements.txt; fi && npm install -g @usebruno/cli@4.3.0"
 }
