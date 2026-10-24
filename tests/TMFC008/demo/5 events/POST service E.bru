@@ -1,0 +1,47 @@
+meta {
+  name: POST /service E (nobody listens)
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{tmfc008_base_url}}/service
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "@type": "Service",
+    "serviceType": "Demo-{{demo_run}}",
+    "name": "demo-E quiet",
+    "state": "active",
+    "startDate": "2024-06-02T00:00:00Z",
+    "serviceSpecification": { "id": "vcpe-spec-1", "name": "vCPE", "@type": "ServiceSpecificationRef" },
+    "serviceCharacteristic": [
+      { "name": "mac", "valueType": "string", "value": "{{mac_c}}", "@type": "StringCharacteristic" },
+      { "name": "vlan", "valueType": "integer", "value": 300, "@type": "IntegerCharacteristic" }
+    ],
+    "relatedParty": [
+      { "role": "user", "@type": "RelatedPartyRefOrPartyRoleRef",
+         "partyOrPartyRole": { "id": "party-anna-müller", "name": "Anna Müller", "@type": "PartyRef" } }
+    ]
+  }
+}
+
+script:pre-request {
+  if (!bru.getVar('events_available')) { bru.runner.skipRequest(); }
+}
+
+script:post-response {
+  if (res.status === 201) { bru.setVar('E_ID', res.body.id); }
+}
+
+tests {
+  test("created", function () { expect(res.status).to.equal(201); });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

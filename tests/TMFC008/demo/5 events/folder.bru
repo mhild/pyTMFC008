@@ -1,0 +1,34 @@
+meta {
+  name: 5 events
+  seq: 5
+}
+
+auth {
+  mode: inherit
+}
+
+script:pre-request {
+  // where this collection reads the received events, and which URL the API is told to call (differs when the API
+  // runs in a container: callback_url=http://host.docker.internal:9099)
+  if (bru.getVar('events_available') === undefined) {
+    const listener = bru.getEnvVar('listener_url') || 'http://127.0.0.1:9099';
+    bru.setVar('listener', listener);
+    bru.setVar('callback', bru.getEnvVar('callback_url') || listener);
+    try {
+      await require('axios').delete(listener + '/events', { timeout: 2000 });   // also forgets older events
+      bru.setVar('events_available', true);
+    } catch (e) {
+      bru.setVar('events_available', false);
+      console.log('No event listener at ' + listener + ' - the requests of "5 events" are skipped. Start: python scripts/event_listener.py');
+    }
+  }
+}
+
+docs {
+  Event notifications (TMF630 hub). A client registers a hub (`POST /hub`: callback URL and an optional query); after a
+  change is committed the API posts the events to `<callback>/listener/<eventType>`.
+
+  Needs a listener: `python scripts/event_listener.py` (port 9099) - the requests are skipped without it. Environment
+  variables `listener_url` (where this collection reads the events, default http://127.0.0.1:9099) and `callback_url`
+  (what the API is told, default the same; for the API in a container e.g. http://host.docker.internal:9099).
+}

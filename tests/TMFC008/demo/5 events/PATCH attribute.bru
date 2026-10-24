@@ -1,0 +1,36 @@
+meta {
+  name: PATCH description (attribute value change event)
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{tmfc008_base_url}}/service/{{D_ID}}
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/merge-patch+json
+}
+
+body:json {
+  { "description": "changed by the demo" }
+}
+
+script:pre-request {
+  if (!bru.getVar('events_available')) { bru.runner.skipRequest(); }
+}
+
+tests {
+  test("patched", function () { expect(res.status).to.equal(200); });
+}
+
+docs {
+  Any other changed attribute triggers `ServiceAttributeValueChangeEvent`.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

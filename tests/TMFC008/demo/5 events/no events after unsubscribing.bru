@@ -1,0 +1,32 @@
+meta {
+  name: no more events after unsubscribing
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{listener}}/events
+  body: none
+  auth: inherit
+}
+
+script:pre-request {
+  if (!bru.getVar('events_available')) { bru.runner.skipRequest(); }
+  await bru.sleep(1000);
+}
+
+tests {
+  test("still the 4 + 1 events from before; none for E", function () {
+    expect(res.body).to.have.length(5);
+    expect(res.body.filter(e => e.event.event.service.id === bru.getVar('E_ID'))).to.have.length(0);
+  });
+}
+
+docs {
+  A deleted hub receives nothing any more.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

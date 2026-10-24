@@ -197,7 +197,9 @@ The integration tests are backend-neutral and run unchanged against both databas
 The Bruno collection is in `tests/TMFC008` (env `dev`; `bru run demo -r --env dev` with the Bruno CLI). Its folder `demo`
 is a walk-through of the features with checked results: it creates its own services and searches them (attribute, OR,
 array element, operators, JSONPath, object values, `fields`, `sort`, paging), through references, changes them and
-shows the revision history; the history requests are skipped when the API runs without `HISTORY_ENABLED`. The official TM Forum conformance test kit runs with `ctk/run-api-ctk.sh` (see [ctk/README.md](ctk/README.md)); the API passes all 37 of its tests.
+shows the revision history and the event notifications of a hub subscription; the history requests are skipped when the API runs
+without `HISTORY_ENABLED`, the event requests when no listener runs (`python scripts/event_listener.py`, port 9099; with the API in a
+container set the environment variable `callback_url` to `http://host.docker.internal:9099`). The official TM Forum conformance test kit runs with `ctk/run-api-ctk.sh` (see [ctk/README.md](ctk/README.md)); the API passes all 37 of its tests.
 
 ## Performance
 

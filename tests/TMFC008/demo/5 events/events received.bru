@@ -1,0 +1,46 @@
+meta {
+  name: events received by the listener
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{listener}}/events
+  body: none
+  auth: inherit
+}
+
+script:pre-request {
+  if (!bru.getVar('events_available')) { bru.runner.skipRequest(); }
+  await bru.sleep(1000);   // delivery is asynchronous, after the response of the change
+}
+
+tests {
+  const at = (name) => res.body.filter(e => e.path.startsWith('/' + name + '/'));
+  test("hub 'all' got the four events about D", function () {
+    const events = at('all');
+    expect(events.map(e => e.eventType)).to.have.members(
+      ['ServiceCreateEvent', 'ServiceStateChangeEvent', 'ServiceAttributeValueChangeEvent', 'ServiceDeleteEvent']);
+    events.forEach(e => expect(e.event.event.service.id).to.equal(bru.getVar('D_ID')));
+    expect(events[0].path).to.equal('/all/listener/' + events[0].eventType[0].toLowerCase() + events[0].eventType.slice(1));
+  });
+  test("hub 'state' got only the state change", function () {
+    const events = at('state');
+    expect(events.map(e => e.eventType)).to.deep.equal(['ServiceStateChangeEvent']);
+    expect(events[0].event.event.service.state).to.equal('inactive');
+  });
+  test("the delete event carries the last state", function () {
+    const deleted = at('all').find(e => e.eventType === 'ServiceDeleteEvent');
+    expect(deleted.event.event.service.state).to.equal('inactive');
+    expect(deleted.event.event.service.description).to.equal('changed by the demo');
+  });
+}
+
+docs {
+  The listener (`GET /events`) shows what arrived where: both hubs got what their query selects.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

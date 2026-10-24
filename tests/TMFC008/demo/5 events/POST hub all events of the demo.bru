@@ -1,0 +1,40 @@
+meta {
+  name: POST hub all events of the demo
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{tmfc008_base_url}}/hub
+  body: json
+  auth: inherit
+}
+
+body:json {
+  { "callback": "{{callback}}/all", "query": "event.service.serviceType=Demo-{{demo_run}}" }
+}
+
+script:pre-request {
+  if (!bru.getVar('events_available')) { bru.runner.skipRequest(); }
+}
+
+script:post-response {
+  if (res.status === 201) { bru.setVar('HUB_ALL', res.body.id); }
+}
+
+tests {
+  test("hub registered", function () {
+    expect(res.status).to.equal(201);
+    expect(res.body.id).to.be.a('string');
+    expect(res.body.callback).to.equal(bru.getVar('callback') + '/all');
+  });
+}
+
+docs {
+  `query` selects events: terms are joined with `&` (AND); dotted paths go into the event. Here: every event about a service of this demo's `serviceType` (so other traffic on the API is not delivered).
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,28 @@
+meta {
+  name: DELETE /service D (delete event)
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{tmfc008_base_url}}/service/{{D_ID}}
+  body: none
+  auth: inherit
+}
+
+script:pre-request {
+  if (!bru.getVar('events_available')) { bru.runner.skipRequest(); }
+}
+
+tests {
+  test("deleted", function () { expect(res.status).to.equal(204); });
+}
+
+docs {
+  Triggers `ServiceDeleteEvent` with the last state of the service.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

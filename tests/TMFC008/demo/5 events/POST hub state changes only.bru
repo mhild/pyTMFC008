@@ -1,0 +1,40 @@
+meta {
+  name: POST hub state changes only
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{tmfc008_base_url}}/hub
+  body: json
+  auth: inherit
+}
+
+body:json {
+  { "callback": "{{callback}}/state", "query": "eventType=ServiceStateChangeEvent&event.service.serviceType=Demo-{{demo_run}}" }
+}
+
+script:pre-request {
+  if (!bru.getVar('events_available')) { bru.runner.skipRequest(); }
+}
+
+script:post-response {
+  if (res.status === 201) { bru.setVar('HUB_STATE', res.body.id); }
+}
+
+tests {
+  test("hub registered", function () {
+    expect(res.status).to.equal(201);
+    expect(res.body.id).to.be.a('string');
+    expect(res.body.callback).to.equal(bru.getVar('callback') + '/state');
+  });
+}
+
+docs {
+  A comma in a value means OR: `eventType=ServiceStateChangeEvent,ServiceDeleteEvent`.
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

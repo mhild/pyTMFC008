@@ -1,0 +1,36 @@
+meta {
+  name: PATCH state (state change event)
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{tmfc008_base_url}}/service/{{D_ID}}
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/merge-patch+json
+}
+
+body:json {
+  { "state": "inactive" }
+}
+
+script:pre-request {
+  if (!bru.getVar('events_available')) { bru.runner.skipRequest(); }
+}
+
+tests {
+  test("patched", function () { expect(res.status).to.equal(200); });
+}
+
+docs {
+  A changed `state` triggers `ServiceStateChangeEvent` (a changed `operatingStatus` its own event type).
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
